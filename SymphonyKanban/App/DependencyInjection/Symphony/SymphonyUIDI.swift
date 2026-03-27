@@ -1,9 +1,9 @@
 @MainActor
 public enum SymphonyUIDI {
     @MainActor
-    public static func makeDashboardRoutes() -> SymphonyDashboardRoutes {
+    public static func makeNavigationRoutes() -> SymphonyNavigationRoutes {
         let runtimeQueryService = makeRuntimeQueryService()
-        return SymphonyDashboardRoutes(
+        return SymphonyNavigationRoutes(
             dashboardController: SymphonyDashboardController(
                 runtimeQueryService: runtimeQueryService
             ),

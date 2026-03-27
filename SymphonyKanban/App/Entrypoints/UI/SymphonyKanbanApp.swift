@@ -6,15 +6,18 @@ struct SymphonyKanbanApp: App {
         WindowGroup {
             SymphonyKanbanRootView()
         }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1280, height: 800)
     }
 }
 
 private struct SymphonyKanbanRootView: View {
     var body: some View {
-        SymphonyUIDI.makeDashboardRoutes()
+        SymphonyUIDI.makeNavigationRoutes()
     }
 }
 
 #Preview {
     SymphonyKanbanRootView()
+        .frame(width: 1280, height: 800)
 }
