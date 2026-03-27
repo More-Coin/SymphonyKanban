@@ -329,12 +329,12 @@ public actor SymphonyOrchestratorRuntimeService {
 
         let refreshedIssue = result.refreshedIssue
         let trackerConfiguration = workflowConfiguration.serviceConfig.tracker
-        let normalizedRefreshedState = refreshedIssue.map { trackerConfiguration.normalizedState($0.state) }
+        let normalizedRefreshedStateType = refreshedIssue.map { trackerConfiguration.normalizedStateType($0.stateType) }
 
         if result.terminalReason == .succeeded,
            let refreshedIssue,
-           let normalizedRefreshedState,
-           trackerConfiguration.normalizedActiveStates.contains(normalizedRefreshedState) {
+           let normalizedRefreshedStateType,
+           trackerConfiguration.normalizedActiveStateTypes.contains(normalizedRefreshedStateType) {
             let delayMs = retryBackoffPolicy.continuationDelayMs()
             let timerHandle = schedulerPort.schedule(after: delayMs) {
                 await self.processRetry(issueID: result.issueID)
@@ -361,8 +361,8 @@ public actor SymphonyOrchestratorRuntimeService {
 
         if result.terminalReason == .succeeded,
            let refreshedIssue,
-           let normalizedRefreshedState,
-           trackerConfiguration.normalizedTerminalStates.contains(normalizedRefreshedState) {
+           let normalizedRefreshedStateType,
+           trackerConfiguration.normalizedTerminalStateTypes.contains(normalizedRefreshedStateType) {
             do {
                 _ = try cleanupWorkspaceUseCase.cleanupWorkspace(
                     for: refreshedIssue.identifier,
@@ -478,7 +478,7 @@ public actor SymphonyOrchestratorRuntimeService {
         }
 
         let trackerConfiguration = workflowConfiguration.serviceConfig.tracker
-        guard trackerConfiguration.containsActiveState(issue.state) else {
+        guard trackerConfiguration.containsActiveStateType(issue.stateType) else {
             state = runtimeStateTransition.release(issueID: issueID, in: state)
             emit(
                 kind: .retry,
@@ -493,7 +493,7 @@ public actor SymphonyOrchestratorRuntimeService {
         guard evaluationState.canClaim(issueID: issue.id),
               eligibilityPolicy.passesBlockerRule(
                 issue: issue,
-                terminalStates: workflowConfiguration.serviceConfig.tracker.terminalStates
+                terminalStateTypes: workflowConfiguration.serviceConfig.tracker.terminalStateTypes
               ) else {
             state = runtimeStateTransition.release(issueID: issueID, in: state)
             emit(
@@ -650,8 +650,8 @@ public actor SymphonyOrchestratorRuntimeService {
                 continue
             }
 
-            let normalizedState = trackerConfiguration.normalizedState(refreshedIssue.state)
-            if trackerConfiguration.normalizedTerminalStates.contains(normalizedState) {
+            let normalizedStateType = trackerConfiguration.normalizedStateType(refreshedIssue.stateType)
+            if trackerConfiguration.normalizedTerminalStateTypes.contains(normalizedStateType) {
                 workerExecutionPort.cancel(workerHandle: runningEntry.workerHandle)
                 do {
                     _ = try cleanupWorkspaceUseCase.cleanupWorkspace(
@@ -676,7 +676,7 @@ public actor SymphonyOrchestratorRuntimeService {
                 continue
             }
 
-            if trackerConfiguration.normalizedActiveStates.contains(normalizedState) {
+            if trackerConfiguration.normalizedActiveStateTypes.contains(normalizedStateType) {
                 state = runtimeStateTransition.updateRunningEntry(
                     issueID: issueID,
                     issue: refreshedIssue,
@@ -704,15 +704,15 @@ public actor SymphonyOrchestratorRuntimeService {
     private func performStartupTerminalWorkspaceCleanup(
         using workflowConfiguration: SymphonyWorkflowConfigurationResultContract
     ) async {
-        let terminalStates = workflowConfiguration.serviceConfig.tracker.terminalStates
-        guard !terminalStates.isEmpty else {
+        let terminalStateTypes = workflowConfiguration.serviceConfig.tracker.terminalStateTypes
+        guard !terminalStateTypes.isEmpty else {
             return
         }
 
         let terminalIssues: [SymphonyIssue]
         do {
             terminalIssues = try await fetchIssuesUseCase.fetchIssues(
-                stateNames: terminalStates,
+                stateTypes: terminalStateTypes,
                 using: workflowConfiguration.serviceConfig.tracker
             ).issues
         } catch {

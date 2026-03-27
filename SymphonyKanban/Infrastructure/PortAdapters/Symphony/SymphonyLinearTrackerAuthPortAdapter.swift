@@ -114,8 +114,8 @@ public struct SymphonyLinearTrackerAuthPortAdapter:
                 kind: trackerConfiguration.kind ?? request.trackerKind,
                 endpoint: trackerConfiguration.endpoint,
                 projectSlug: trackerConfiguration.projectSlug,
-                activeStates: trackerConfiguration.activeStates,
-                terminalStates: trackerConfiguration.terminalStates
+                activeStateTypes: trackerConfiguration.activeStateTypes,
+                terminalStateTypes: trackerConfiguration.terminalStateTypes
             )
         )
 

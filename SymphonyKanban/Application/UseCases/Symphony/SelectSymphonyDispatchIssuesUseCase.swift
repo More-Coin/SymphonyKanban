@@ -24,7 +24,7 @@ public struct SelectSymphonyDispatchIssuesUseCase {
             state.canClaim(issueID: issue.id)
                 && eligibilityPolicy.passesBlockerRule(
                     issue: issue,
-                    terminalStates: serviceConfig.tracker.terminalStates
+                    terminalStateTypes: serviceConfig.tracker.terminalStateTypes
                 )
                 && state.hasAvailableSlot(for: issue, using: serviceConfig)
         }

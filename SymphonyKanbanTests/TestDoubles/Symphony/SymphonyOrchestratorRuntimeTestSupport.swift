@@ -59,7 +59,7 @@ enum SymphonyOrchestratorRuntimeTestSupport {
         maxConcurrentAgentsByState: [String: Int] = [:],
         pollingIntervalMs: Int = 30_000,
         stallTimeoutMs: Int = 300_000,
-        activeStates: [String] = ["Todo", "In Progress"],
+        activeStateTypes: [String] = ["backlog", "unstarted", "started"],
         promptTemplate: String = "Issue: {{ issue.identifier }}"
     ) -> SymphonyWorkflowConfigurationResultContract {
         SymphonyWorkflowConfigurationResultContract(
@@ -73,8 +73,8 @@ enum SymphonyOrchestratorRuntimeTestSupport {
                     kind: "linear",
                     endpoint: "https://api.linear.app/graphql",
                     projectSlug: "proj",
-                    activeStates: activeStates,
-                    terminalStates: ["Done", "Canceled"]
+                    activeStateTypes: activeStateTypes,
+                    terminalStateTypes: ["completed", "canceled"]
                 ),
                 polling: .init(intervalMs: pollingIntervalMs),
                 workspace: .init(rootPath: "/tmp/symphony_workspaces"),
@@ -115,7 +115,8 @@ enum SymphonyOrchestratorRuntimeTestSupport {
         id: String,
         identifier: String,
         priority: Int?,
-        state: String
+        state: String,
+        stateType: String
     ) -> SymphonyIssue {
         SymphonyIssue(
             id: id,
@@ -124,6 +125,7 @@ enum SymphonyOrchestratorRuntimeTestSupport {
             description: nil,
             priority: priority,
             state: state,
+            stateType: stateType,
             branchName: nil,
             url: nil,
             labels: [],
@@ -311,7 +313,7 @@ final class RuntimeIssueTrackerReadSpy: @unchecked Sendable, SymphonyIssueTracke
     }
 
     func fetchIssues(
-        byStates _: [String],
+        byStateTypes _: [String],
         using _: SymphonyServiceConfigContract.Tracker
     ) async throws -> [SymphonyIssue] {
         recorder?.append("tracker.fetchIssues")

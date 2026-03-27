@@ -327,11 +327,11 @@ public final class SymphonyWorkerAttemptService: @unchecked Sendable {
             )
         }
 
-        let activeStates = normalizeStates(request.workflowConfiguration.serviceConfig.tracker.activeStates)
-        let terminalStates = normalizeStates(request.workflowConfiguration.serviceConfig.tracker.terminalStates)
-        let normalizedState = normalizeState(refreshedIssue.state)
+        let activeStateTypes = normalizeStates(request.workflowConfiguration.serviceConfig.tracker.activeStateTypes)
+        let terminalStateTypes = normalizeStates(request.workflowConfiguration.serviceConfig.tracker.terminalStateTypes)
+        let normalizedStateType = normalizeState(refreshedIssue.stateType)
 
-        if terminalStates.contains(normalizedState) {
+        if terminalStateTypes.contains(normalizedStateType) {
             return TurnEvaluation(
                 issue: refreshedIssue,
                 refreshedIssue: refreshedIssue,
@@ -341,7 +341,7 @@ public final class SymphonyWorkerAttemptService: @unchecked Sendable {
             )
         }
 
-        if !activeStates.contains(normalizedState) {
+        if !activeStateTypes.contains(normalizedStateType) {
             return TurnEvaluation(
                 issue: refreshedIssue,
                 refreshedIssue: refreshedIssue,

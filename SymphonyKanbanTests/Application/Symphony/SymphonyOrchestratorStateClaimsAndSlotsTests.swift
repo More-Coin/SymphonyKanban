@@ -11,7 +11,13 @@ struct SymphonyOrchestratorStateClaimsAndSlotsTests {
         let initialState = SymphonyOrchestratorStateTestSupport.makeState(
             running: [
                 "issue-1": SymphonyOrchestratorStateTestSupport.makeRunningEntry(
-                    issue: SymphonyOrchestratorStateTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Todo")
+                    issue: SymphonyOrchestratorStateTestSupport.makeIssue(
+                        id: "issue-1",
+                        identifier: "ABC-1",
+                        priority: 1,
+                        state: "Todo",
+                        stateType: "unstarted"
+                    )
                 )
             ],
             claimed: ["issue-1"],
@@ -41,22 +47,36 @@ struct SymphonyOrchestratorStateClaimsAndSlotsTests {
         let serviceConfig = SymphonyOrchestratorStateTestSupport.makeServiceConfig(
             maxConcurrentAgents: 4,
             maxConcurrentAgentsByState: ["todo": 1],
-            terminalStates: ["Done", "Canceled"]
+            terminalStateTypes: ["completed", "canceled"]
         )
-        let runningTodo = SymphonyOrchestratorStateTestSupport.makeIssue(id: "issue-running", identifier: "ABC-0", priority: 1, state: "Todo")
+        let runningTodo = SymphonyOrchestratorStateTestSupport.makeIssue(
+            id: "issue-running",
+            identifier: "ABC-0",
+            priority: 1,
+            state: "Todo",
+            stateType: "unstarted"
+        )
         let blockedTodo = SymphonyOrchestratorStateTestSupport.makeIssue(
             id: "issue-blocked",
             identifier: "ABC-1",
             priority: 1,
             state: "Todo",
-            blockedBy: [.init(id: "blocker-1", identifier: "ABC-B1", state: "In Progress")]
+            stateType: "unstarted",
+            blockedBy: [.init(id: "blocker-1", identifier: "ABC-B1", state: "In Progress", stateType: "started")]
         )
-        let claimedInProgress = SymphonyOrchestratorStateTestSupport.makeIssue(id: "issue-claimed", identifier: "ABC-2", priority: 1, state: "In Progress")
+        let claimedInProgress = SymphonyOrchestratorStateTestSupport.makeIssue(
+            id: "issue-claimed",
+            identifier: "ABC-2",
+            priority: 1,
+            state: "In Progress",
+            stateType: "started"
+        )
         let readyInProgressOldest = SymphonyOrchestratorStateTestSupport.makeIssue(
             id: "issue-ready-1",
             identifier: "ABC-3",
             priority: 2,
             state: "In Progress",
+            stateType: "started",
             createdAt: Date(timeIntervalSince1970: 100)
         )
         let readyInProgressNewest = SymphonyOrchestratorStateTestSupport.makeIssue(
@@ -64,6 +84,7 @@ struct SymphonyOrchestratorStateClaimsAndSlotsTests {
             identifier: "ABC-4",
             priority: 2,
             state: "In Progress",
+            stateType: "started",
             createdAt: Date(timeIntervalSince1970: 200)
         )
         let nullPriority = SymphonyOrchestratorStateTestSupport.makeIssue(
@@ -71,6 +92,7 @@ struct SymphonyOrchestratorStateClaimsAndSlotsTests {
             identifier: "ABC-5",
             priority: nil,
             state: "In Progress",
+            stateType: "started",
             createdAt: Date(timeIntervalSince1970: 50)
         )
         let state = SymphonyOrchestratorStateTestSupport.makeState(
@@ -96,10 +118,22 @@ struct SymphonyOrchestratorStateClaimsAndSlotsTests {
         let state = SymphonyOrchestratorStateTestSupport.makeState(
             running: [
                 "issue-1": SymphonyOrchestratorStateTestSupport.makeRunningEntry(
-                    issue: SymphonyOrchestratorStateTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Todo")
+                    issue: SymphonyOrchestratorStateTestSupport.makeIssue(
+                        id: "issue-1",
+                        identifier: "ABC-1",
+                        priority: 1,
+                        state: "Todo",
+                        stateType: "unstarted"
+                    )
                 ),
                 "issue-2": SymphonyOrchestratorStateTestSupport.makeRunningEntry(
-                    issue: SymphonyOrchestratorStateTestSupport.makeIssue(id: "issue-2", identifier: "ABC-2", priority: 1, state: "In Progress")
+                    issue: SymphonyOrchestratorStateTestSupport.makeIssue(
+                        id: "issue-2",
+                        identifier: "ABC-2",
+                        priority: 1,
+                        state: "In Progress",
+                        stateType: "started"
+                    )
                 )
             ],
             claimed: ["issue-claimed"]
@@ -111,7 +145,13 @@ struct SymphonyOrchestratorStateClaimsAndSlotsTests {
         #expect(state.canClaim(issueID: "issue-claimed") == false)
         #expect(state.canClaim(issueID: "issue-3"))
         #expect(state.hasAvailableSlot(
-            for: SymphonyOrchestratorStateTestSupport.makeIssue(id: "issue-3", identifier: "ABC-3", priority: 1, state: "In Progress"),
+            for: SymphonyOrchestratorStateTestSupport.makeIssue(
+                id: "issue-3",
+                identifier: "ABC-3",
+                priority: 1,
+                state: "In Progress",
+                stateType: "started"
+            ),
             using: serviceConfig
         ))
     }

@@ -21,7 +21,7 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
                       "url": "https://linear.app/ABC-1",
                       "createdAt": "2024-03-20T10:00:00Z",
                       "updatedAt": "2024-03-21T10:00:00Z",
-                      "state": { "name": "Todo" },
+                      "state": { "name": "Todo", "type": "unstarted" },
                       "labels": { "nodes": [{ "name": "Bug" }] },
                       "inverseRelations": {
                         "nodes": [
@@ -30,7 +30,7 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
                             "relatedIssue": {
                               "id": "blocker-1",
                               "identifier": "ABC-0",
-                              "state": { "name": "Done" }
+                              "state": { "name": "Done", "type": "completed" }
                             }
                           },
                           {
@@ -38,7 +38,7 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
                             "relatedIssue": {
                               "id": "ignored-1",
                               "identifier": "ABC-X",
-                              "state": { "name": "Done" }
+                              "state": { "name": "Done", "type": "completed" }
                             }
                           }
                         ]
@@ -68,7 +68,7 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
                       "url": null,
                       "createdAt": "2024-03-22T10:00:00Z",
                       "updatedAt": null,
-                      "state": { "name": "In Progress" },
+                      "state": { "name": "In Progress", "type": "started" },
                       "labels": { "nodes": [{ "name": "Needs-Review" }] },
                       "inverseRelations": { "nodes": [] }
                     }
@@ -94,7 +94,7 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
         #expect(issues.map(\.identifier) == ["ABC-1", "ABC-2"])
         #expect(issues[0].labels == ["bug"])
         #expect(issues[0].blockedBy == [
-            SymphonyIssueBlockerReference(id: "blocker-1", identifier: "ABC-0", state: "Done")
+            SymphonyIssueBlockerReference(id: "blocker-1", identifier: "ABC-0", state: "Done", stateType: "completed")
         ])
         #expect(issues[1].priority == nil)
         #expect(issues[1].labels == ["needs-review"])
@@ -105,7 +105,9 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
         let secondRequestBody = try SymphonyLinearIssueTrackerGatewayTestSupport.requestBody(requests[1])
         #expect(firstRequestBody.query.contains("slugId"))
         #expect(firstRequestBody.variables["projectSlug"] as? String == "project-slug")
-        #expect(firstRequestBody.variables["states"] as? [String] == ["Todo", "In Progress"])
+        #expect(firstRequestBody.query.contains("state: { type: { in: $stateTypes } }"))
+        #expect(firstRequestBody.query.contains("state { name type }"))
+        #expect(firstRequestBody.variables["stateTypes"] as? [String] == ["backlog", "unstarted", "started"])
         #expect(firstRequestBody.variables["after"] is NSNull)
         #expect(secondRequestBody.variables["after"] as? String == "cursor-1")
     }
@@ -138,8 +140,8 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
                 kind: "linear",
                 endpoint: nil,
                 projectSlug: "project-slug",
-                activeStates: ["Todo", "In Progress"],
-                terminalStates: ["Done", "Canceled"]
+                activeStateTypes: ["backlog", "unstarted", "started"],
+                terminalStateTypes: ["completed", "canceled"]
             )
         )
 

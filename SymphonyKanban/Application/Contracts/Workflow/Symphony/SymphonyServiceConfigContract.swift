@@ -5,31 +5,31 @@ public struct SymphonyServiceConfigContract: Equatable, Sendable {
         public let kind: String?
         public let endpoint: String?
         public let projectSlug: String?
-        public let activeStates: [String]
-        public let terminalStates: [String]
+        public let activeStateTypes: [String]
+        public let terminalStateTypes: [String]
 
-        public var normalizedActiveStates: Set<String> {
-            Set(activeStates.map(Self.normalizeState))
+        public var normalizedActiveStateTypes: Set<String> {
+            Set(activeStateTypes.map(Self.normalizeStateType))
         }
 
-        public var normalizedTerminalStates: Set<String> {
-            Set(terminalStates.map(Self.normalizeState))
+        public var normalizedTerminalStateTypes: Set<String> {
+            Set(terminalStateTypes.map(Self.normalizeStateType))
         }
 
-        public func normalizedState(_ state: String) -> String {
-            Self.normalizeState(state)
+        public func normalizedStateType(_ stateType: String) -> String {
+            Self.normalizeStateType(stateType)
         }
 
-        public func containsActiveState(_ state: String) -> Bool {
-            normalizedActiveStates.contains(Self.normalizeState(state))
+        public func containsActiveStateType(_ stateType: String) -> Bool {
+            normalizedActiveStateTypes.contains(Self.normalizeStateType(stateType))
         }
 
-        public func containsTerminalState(_ state: String) -> Bool {
-            normalizedTerminalStates.contains(Self.normalizeState(state))
+        public func containsTerminalStateType(_ stateType: String) -> Bool {
+            normalizedTerminalStateTypes.contains(Self.normalizeStateType(stateType))
         }
 
-        private static func normalizeState(_ state: String) -> String {
-            state.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        private static func normalizeStateType(_ stateType: String) -> String {
+            stateType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         }
     }
 

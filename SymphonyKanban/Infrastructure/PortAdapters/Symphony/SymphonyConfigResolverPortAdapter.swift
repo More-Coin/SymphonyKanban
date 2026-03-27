@@ -23,9 +23,10 @@ public struct SymphonyConfigResolverPortAdapter: SymphonyConfigResolverPortProto
                 kind: string(for: "kind", in: tracker),
                 endpoint: resolvedTrackerEndpoint(in: tracker),
                 projectSlug: string(for: "project_slug", in: tracker),
-                activeStates: stringArray(for: "active_states", in: tracker) ?? ["Todo", "In Progress"],
-                terminalStates: stringArray(for: "terminal_states", in: tracker)
-                    ?? ["Closed", "Cancelled", "Canceled", "Duplicate", "Done"]
+                activeStateTypes: stringArray(for: "active_state_types", in: tracker)
+                    ?? ["backlog", "unstarted", "started"],
+                terminalStateTypes: stringArray(for: "terminal_state_types", in: tracker)
+                    ?? ["completed", "canceled"]
             ),
             polling: .init(
                 intervalMs: integer(for: "interval_ms", in: polling) ?? 30000

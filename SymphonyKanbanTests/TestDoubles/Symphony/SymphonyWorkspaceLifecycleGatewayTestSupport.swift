@@ -32,8 +32,8 @@ struct WorkspaceLifecycleTestEnvironment {
                 kind: "linear",
                 endpoint: "https://api.linear.app/graphql",
                 projectSlug: "project-slug",
-                activeStates: ["Todo", "In Progress"],
-                terminalStates: ["Done", "Canceled"]
+                activeStateTypes: ["backlog", "unstarted", "started"],
+                terminalStateTypes: ["completed", "canceled"]
             ),
             polling: .init(intervalMs: 30000),
             workspace: .init(rootPath: rootURL.path),

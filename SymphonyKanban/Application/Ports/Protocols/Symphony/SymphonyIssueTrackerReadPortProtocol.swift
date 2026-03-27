@@ -5,7 +5,7 @@ public protocol SymphonyIssueTrackerReadPortProtocol: Sendable {
     ) async throws -> [SymphonyIssue]
 
     func fetchIssues(
-        byStates stateNames: [String],
+        byStateTypes stateTypes: [String],
         using trackerConfiguration: SymphonyServiceConfigContract.Tracker
     ) async throws -> [SymphonyIssue]
 

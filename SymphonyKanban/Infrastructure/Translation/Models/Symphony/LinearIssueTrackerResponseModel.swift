@@ -41,7 +41,8 @@ struct LinearIssueNodeModel: Decodable {
         guard let id = normalizedRequired(id, field: "id"),
               let identifier = normalizedRequired(identifier, field: "identifier"),
               let title = normalizedRequired(title, field: "title"),
-              let state = normalizedRequired(state?.name, field: "state.name") else {
+              let state = normalizedRequired(state?.name, field: "state.name"),
+              let stateType = normalizedRequired(self.state?.type, field: "state.type") else {
             throw SymphonyIssueTrackerInfrastructureError.linearUnknownPayload(
                 details: "The issue payload was missing one or more required fields."
             )
@@ -54,6 +55,7 @@ struct LinearIssueNodeModel: Decodable {
             description: normalizedOptional(description),
             priority: priority?.integerValue,
             state: state,
+            stateType: stateType,
             branchName: normalizedOptional(branchName),
             url: normalizedOptional(url),
             labels: (labels?.nodes ?? []).compactMap { normalizedOptional($0.name) },
@@ -75,6 +77,7 @@ struct LinearPriorityValueModel: Decodable {
 
 struct LinearIssueStateModel: Decodable {
     let name: String?
+    let type: String?
 }
 
 struct LinearLabelConnectionModel: Decodable {
@@ -151,7 +154,8 @@ private extension LinearIssueRelationNodeModel {
         return SymphonyIssueBlockerReference(
             id: normalizedOptional(relatedIssue?.id),
             identifier: normalizedOptional(relatedIssue?.identifier),
-            state: normalizedOptional(relatedIssue?.state?.name)
+            state: normalizedOptional(relatedIssue?.state?.name),
+            stateType: normalizedOptional(relatedIssue?.state?.type)
         )
     }
 

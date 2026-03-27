@@ -125,11 +125,8 @@ struct SymphonyWorkflowResolverPortAdapterTests {
         #expect(result.serviceConfig.tracker.kind == "linear")
         #expect(result.serviceConfig.tracker.endpoint == "https://api.linear.app/graphql")
         #expect(result.serviceConfig.tracker.projectSlug == nil)
-        #expect(result.serviceConfig.tracker.activeStates == ["Todo", "In Progress"])
-        #expect(
-            result.serviceConfig.tracker.terminalStates ==
-                ["Closed", "Cancelled", "Canceled", "Duplicate", "Done"]
-        )
+        #expect(result.serviceConfig.tracker.activeStateTypes == ["backlog", "unstarted", "started"])
+        #expect(result.serviceConfig.tracker.terminalStateTypes == ["completed", "canceled"])
         #expect(result.serviceConfig.polling.intervalMs == 30000)
         #expect(result.serviceConfig.workspace.rootPath == defaultWorkspaceRoot)
         #expect(result.serviceConfig.hooks.afterCreate == nil)
@@ -185,12 +182,12 @@ struct SymphonyWorkflowResolverPortAdapterTests {
               kind: linear
               endpoint: https://example.invalid/graphql
               project_slug: symphony
-              active_states:
-                - Backlog
-                - In Progress
-              terminal_states:
-                - Done
-                - Canceled
+              active_state_types:
+                - backlog
+                - started
+              terminal_state_types:
+                - completed
+                - canceled
             polling:
               interval_ms: "45000"
             workspace:
@@ -248,8 +245,8 @@ struct SymphonyWorkflowResolverPortAdapterTests {
         #expect(result.serviceConfig.tracker.kind == "linear")
         #expect(result.serviceConfig.tracker.endpoint == "https://example.invalid/graphql")
         #expect(result.serviceConfig.tracker.projectSlug == "symphony")
-        #expect(result.serviceConfig.tracker.activeStates == ["Backlog", "In Progress"])
-        #expect(result.serviceConfig.tracker.terminalStates == ["Done", "Canceled"])
+        #expect(result.serviceConfig.tracker.activeStateTypes == ["backlog", "started"])
+        #expect(result.serviceConfig.tracker.terminalStateTypes == ["completed", "canceled"])
         #expect(result.serviceConfig.polling.intervalMs == 45000)
         #expect(
             result.serviceConfig.workspace.rootPath ==

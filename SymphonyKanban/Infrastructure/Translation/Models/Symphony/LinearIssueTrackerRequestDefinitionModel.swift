@@ -20,7 +20,7 @@ struct LinearIssueTrackerRequestDefinitionModel {
             query: candidateIssuesQuery,
             variables: [
                 "projectSlug": .string(configuration.projectSlug),
-                "states": .stringArray(configuration.activeStates),
+                "stateTypes": .stringArray(configuration.activeStateTypes),
                 "after": afterCursor.map { .string($0) } ?? .null
             ]
         )
@@ -29,7 +29,7 @@ struct LinearIssueTrackerRequestDefinitionModel {
     func makeIssuesByStatesRequestDefinition(
         using configuration: LinearNormalizedTrackerConfiguration,
         authorizationHeader: String,
-        states: [String],
+        stateTypes: [String],
         afterCursor: String?
     ) -> LinearIssueTrackerRequestDefinition {
         makeRequestDefinition(
@@ -39,7 +39,7 @@ struct LinearIssueTrackerRequestDefinitionModel {
             query: issuesByStatesQuery,
             variables: [
                 "projectSlug": .string(configuration.projectSlug),
-                "states": .stringArray(states),
+                "stateTypes": .stringArray(stateTypes),
                 "after": afterCursor.map { .string($0) } ?? .null
             ]
         )
@@ -81,12 +81,12 @@ struct LinearIssueTrackerRequestDefinitionModel {
 
     private var candidateIssuesQuery: String {
         """
-        query FetchCandidateIssues($projectSlug: String!, $states: [String!], $after: String) {
+        query FetchCandidateIssues($projectSlug: String!, $stateTypes: [String!], $after: String) {
           issues(
             first: 50
             after: $after
             filter: {
-              state: { name: { in: $states } }
+              state: { type: { in: $stateTypes } }
               project: { slugId: { eq: $projectSlug } }
             }
           ) {
@@ -100,7 +100,7 @@ struct LinearIssueTrackerRequestDefinitionModel {
               url
               createdAt
               updatedAt
-              state { name }
+              state { name type }
               labels { nodes { name } }
               inverseRelations {
                 nodes {
@@ -108,7 +108,7 @@ struct LinearIssueTrackerRequestDefinitionModel {
                   relatedIssue {
                     id
                     identifier
-                    state { name }
+                    state { name type }
                   }
                 }
               }
@@ -124,12 +124,12 @@ struct LinearIssueTrackerRequestDefinitionModel {
 
     private var issuesByStatesQuery: String {
         """
-        query FetchIssuesByStates($projectSlug: String!, $states: [String!], $after: String) {
+        query FetchIssuesByStates($projectSlug: String!, $stateTypes: [String!], $after: String) {
           issues(
             first: 50
             after: $after
             filter: {
-              state: { name: { in: $states } }
+              state: { type: { in: $stateTypes } }
               project: { slugId: { eq: $projectSlug } }
             }
           ) {
@@ -143,7 +143,7 @@ struct LinearIssueTrackerRequestDefinitionModel {
               url
               createdAt
               updatedAt
-              state { name }
+              state { name type }
               labels { nodes { name } }
               inverseRelations {
                 nodes {
@@ -151,7 +151,7 @@ struct LinearIssueTrackerRequestDefinitionModel {
                   relatedIssue {
                     id
                     identifier
-                    state { name }
+                    state { name type }
                   }
                 }
               }
@@ -177,7 +177,7 @@ struct LinearIssueTrackerRequestDefinitionModel {
               id
               identifier
               title
-              state { name }
+              state { name type }
             }
           }
         }

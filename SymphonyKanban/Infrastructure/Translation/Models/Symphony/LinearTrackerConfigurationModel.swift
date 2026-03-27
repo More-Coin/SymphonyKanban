@@ -3,7 +3,7 @@ import Foundation
 struct LinearNormalizedTrackerConfiguration {
     let endpoint: String
     let projectSlug: String
-    let activeStates: [String]
+    let activeStateTypes: [String]
 }
 
 struct LinearTrackerConfigurationModel {
@@ -34,7 +34,7 @@ struct LinearTrackerConfigurationModel {
         return LinearNormalizedTrackerConfiguration(
             endpoint: normalizedEndpoint,
             projectSlug: projectSlug ?? "",
-            activeStates: trackerConfiguration.activeStates
+            activeStateTypes: trackerConfiguration.activeStateTypes
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
         )

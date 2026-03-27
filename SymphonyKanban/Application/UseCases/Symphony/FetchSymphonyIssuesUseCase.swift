@@ -15,12 +15,12 @@ public struct FetchSymphonyIssuesUseCase: Sendable {
     }
 
     public func fetchIssues(
-        stateNames: [String],
+        stateTypes: [String],
         using trackerConfiguration: SymphonyServiceConfigContract.Tracker
     ) async throws -> SymphonyIssueCollectionContract {
         SymphonyIssueCollectionContract(
             issues: try await issueTrackerReadPort.fetchIssues(
-                byStates: stateNames,
+                byStateTypes: stateTypes,
                 using: trackerConfiguration
             )
         )

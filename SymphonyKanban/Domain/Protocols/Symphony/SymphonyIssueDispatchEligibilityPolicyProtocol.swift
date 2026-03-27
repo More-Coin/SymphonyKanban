@@ -1,6 +1,6 @@
 public protocol SymphonyIssueDispatchEligibilityPolicyProtocol {
     func passesBlockerRule(
         issue: SymphonyIssue,
-        terminalStates: [String]
+        terminalStateTypes: [String]
     ) -> Bool
 }

@@ -70,8 +70,8 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
     - `tracker.kind`
     - `tracker.endpoint`
     - `tracker.project_slug`
-    - `tracker.active_states`
-    - `tracker.terminal_states`
+    - `tracker.active_state_types`
+    - `tracker.terminal_state_types`
     - `polling.interval_ms`
     - `workspace.root`
     - `hooks.after_create`
@@ -92,8 +92,8 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
     - `codex.stall_timeout_ms`
   - [x] Lock exact defaults/coercion behavior where the spec defines them:
     - `tracker.endpoint` defaults to `https://api.linear.app/graphql` when `tracker.kind == "linear"`
-    - `tracker.active_states` defaults to `["Todo", "In Progress"]`
-    - `tracker.terminal_states` defaults to `["Closed", "Cancelled", "Canceled", "Duplicate", "Done"]`
+    - `tracker.active_state_types` defaults to `["backlog", "unstarted", "started"]`
+    - `tracker.terminal_state_types` defaults to `["completed", "canceled"]`
     - `polling.interval_ms` defaults to `30000` and accepts integer or string integer input
     - `workspace.root` defaults to `<system-temp>/symphony_workspaces`
     - `hooks.timeout_ms` defaults to `60000` and non-positive values fall back to the default
@@ -277,7 +277,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
     - `swift test --package-path .`
     - `swift run --package-path . kanban-architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
-    - `Todo` blocker eligibility currently treats missing blocker state as non-terminal.
+    - `state type` blocker eligibility currently treats missing blocker state as non-terminal.
     - Dispatch ordering currently sorts `created_at == nil` after known dates.
     - `identifier` is the spec tie-break and `id` is used only as a deterministic final fallback.
     - Sanitized workspace-key collision handling remains deferred until workspace-management work in `2.3`.
@@ -736,8 +736,8 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
     - `created_at` oldest first
     - `identifier` lexicographic tie-breaker
   - [x] make blocker eligibility explicit:
-    - `Todo` with any non-terminal blocker is not eligible
-    - `Todo` with only terminal blockers is eligible
+    - `unstarted` or `backlog` issues with any non-terminal blocker are not eligible
+    - `unstarted` or `backlog` issues with only terminal blockers are eligible
   - [x] normalize state keys to lowercase for per-state concurrency lookup and fall back to the global limit when no state override exists
   - [x] keep retry queue entries explicit enough for acceptance tests:
     - `issue_id`
@@ -886,7 +886,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
 - [x] Add only the highest-signal invariant tests for retries, cancellation on state changes, and reload behavior.
 - [x] Verify structured dispatch/reconciliation/retry logging in the highest-signal failure paths without overfitting log text.
 - [ ] Add acceptance tests for:
-  - [x] `Todo` blocker eligibility with terminal vs non-terminal blockers
+  - [x] `unstarted` / `backlog` blocker eligibility with terminal vs non-terminal blockers
   - [x] per-state concurrency normalization and global fallback
   - [x] normal-exit continuation retry (`~1000 ms`)
   - [x] abnormal-exit exponential backoff cap

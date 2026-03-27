@@ -123,14 +123,14 @@ public struct SymphonyLinearIssueTrackerGateway: SymphonyIssueTrackerReadPortPro
     }
 
     public func fetchIssues(
-        byStates stateNames: [String],
+        byStateTypes stateTypes: [String],
         using trackerConfiguration: SymphonyServiceConfigContract.Tracker
     ) async throws -> [SymphonyIssue] {
-        let normalizedStates = stateNames
+        let normalizedStateTypes = stateTypes
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
-        guard !normalizedStates.isEmpty else {
+        guard !normalizedStateTypes.isEmpty else {
             return []
         }
 
@@ -143,7 +143,7 @@ public struct SymphonyLinearIssueTrackerGateway: SymphonyIssueTrackerReadPortPro
             let requestDefinition = requestDefinitionModel.makeIssuesByStatesRequestDefinition(
                 using: normalizedTracker,
                 authorizationHeader: authorizationHeader,
-                states: normalizedStates,
+                stateTypes: normalizedStateTypes,
                 afterCursor: afterCursor
             )
             let request = try requestBuilder.makeRequest(

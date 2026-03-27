@@ -81,8 +81,8 @@ struct SymphonyConnectionReadinessUseCaseTests {
             kind: "linear",
             endpoint: nil,
             projectSlug: "project-slug",
-            activeStates: ["Todo"],
-            terminalStates: ["Done"]
+            activeStateTypes: ["backlog", "unstarted", "started"],
+            terminalStateTypes: ["completed", "canceled"]
         )
     }
 }

@@ -10,10 +10,26 @@ struct SymphonyOrchestratorRuntimeStartupTests {
         let tracker = RuntimeIssueTrackerReadSpy(
             recorder: recorder,
             fetchIssuesResponses: [
-                .success([SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "terminal-1", identifier: "TERM-1", priority: 1, state: "Done")])
+                .success([
+                    SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+                        id: "terminal-1",
+                        identifier: "TERM-1",
+                        priority: 1,
+                        state: "Done",
+                        stateType: "completed"
+                    )
+                ])
             ],
             candidateResponses: [
-                .success([SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Todo")])
+                .success([
+                    SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+                        id: "issue-1",
+                        identifier: "ABC-1",
+                        priority: 1,
+                        state: "Todo",
+                        stateType: "unstarted"
+                    )
+                ])
             ]
         )
         let workspacePort = RuntimeWorkspaceLifecycleSpy(recorder: recorder)
@@ -67,7 +83,15 @@ struct SymphonyOrchestratorRuntimeStartupTests {
                 .failure(SymphonyIssueTrackerInfrastructureError.linearAPIRequest(details: "offline"))
             ],
             candidateResponses: [
-                .success([SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Todo")])
+                .success([
+                    SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+                        id: "issue-1",
+                        identifier: "ABC-1",
+                        priority: 1,
+                        state: "Todo",
+                        stateType: "unstarted"
+                    )
+                ])
             ]
         )
         let scheduler = RuntimeSchedulerSpy()

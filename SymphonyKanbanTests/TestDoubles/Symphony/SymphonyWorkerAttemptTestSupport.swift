@@ -24,7 +24,7 @@ enum SymphonyWorkerAttemptTestSupport {
     }
 
     static func makeRequest(
-        issue: SymphonyIssue = makeIssue(state: "Todo"),
+        issue: SymphonyIssue = makeIssue(state: "Todo", stateType: "unstarted"),
         attempt: Int? = nil,
         maxTurns: Int = 2
     ) -> SymphonyWorkerAttemptRequestContract {
@@ -42,8 +42,8 @@ enum SymphonyWorkerAttemptTestSupport {
                         kind: "linear",
                         endpoint: "https://linear.example",
                         projectSlug: "proj",
-                        activeStates: ["Todo", "In Progress"],
-                        terminalStates: ["Done", "Canceled"]
+                        activeStateTypes: ["backlog", "unstarted", "started"],
+                        terminalStateTypes: ["completed", "canceled"]
                     ),
                     polling: .init(intervalMs: 10_000),
                     workspace: .init(rootPath: "/tmp/symphony_workspaces"),
@@ -74,7 +74,7 @@ enum SymphonyWorkerAttemptTestSupport {
         )
     }
 
-    static func makeIssue(state: String) -> SymphonyIssue {
+    static func makeIssue(state: String, stateType: String) -> SymphonyIssue {
         SymphonyIssue(
             id: "issue-1",
             identifier: "ABC-123",
@@ -82,6 +82,7 @@ enum SymphonyWorkerAttemptTestSupport {
             description: nil,
             priority: 1,
             state: state,
+            stateType: stateType,
             branchName: nil,
             url: nil,
             labels: [],
@@ -202,7 +203,7 @@ final class WorkerAttemptIssueTrackerReadSpy: @unchecked Sendable, SymphonyIssue
     }
 
     func fetchIssues(
-        byStates _: [String],
+        byStateTypes _: [String],
         using _: SymphonyServiceConfigContract.Tracker
     ) async throws -> [SymphonyIssue] {
         []

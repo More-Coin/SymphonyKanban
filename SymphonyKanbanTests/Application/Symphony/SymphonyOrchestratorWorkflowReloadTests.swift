@@ -47,7 +47,13 @@ struct SymphonyOrchestratorWorkflowReloadTests {
 
     @Test
     func defensivePerTickRevalidationPicksUpChangedWorkflowWhenWatchEventIsMissed() async throws {
-        let reviewIssue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-2", identifier: "ABC-2", priority: 1, state: "Review")
+        let reviewIssue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+            id: "issue-2",
+            identifier: "ABC-2",
+            priority: 1,
+            state: "Review",
+            stateType: "started"
+        )
         let tracker = RuntimeIssueTrackerReadSpy(
             candidateResponses: [
                 .success([]),
@@ -57,7 +63,7 @@ struct SymphonyOrchestratorWorkflowReloadTests {
         let scheduler = RuntimeSchedulerSpy()
         let workerExecution = RuntimeWorkerExecutionSpy()
         let updatedConfiguration = SymphonyOrchestratorRuntimeTestSupport.makeWorkflowConfiguration(
-            activeStates: ["Todo", "Review"],
+            activeStateTypes: ["backlog", "started"],
             promptTemplate: "Reloaded prompt"
         )
         let workflowLoader = WorkflowLoaderSpy(definition: SymphonyOrchestratorRuntimeTestSupport.makeWorkflowConfiguration().workflowDefinition)
@@ -92,14 +98,36 @@ struct SymphonyOrchestratorWorkflowReloadTests {
 
     @Test
     func invalidReloadKeepsLastKnownGoodConfigAndSkipsDispatchWhileReconciliationContinues() async throws {
-        let activeIssue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Todo")
+        let activeIssue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+            id: "issue-1",
+            identifier: "ABC-1",
+            priority: 1,
+            state: "Todo",
+            stateType: "unstarted"
+        )
         let tracker = RuntimeIssueTrackerReadSpy(
             candidateResponses: [
                 .success([activeIssue]),
-                .success([SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-2", identifier: "ABC-2", priority: 1, state: "Todo")])
+                .success([
+                    SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+                        id: "issue-2",
+                        identifier: "ABC-2",
+                        priority: 1,
+                        state: "Todo",
+                        stateType: "unstarted"
+                    )
+                ])
             ],
             issueStateResponses: [
-                .success([SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Todo")])
+                .success([
+                    SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+                        id: "issue-1",
+                        identifier: "ABC-1",
+                        priority: 1,
+                        state: "Todo",
+                        stateType: "unstarted"
+                    )
+                ])
             ]
         )
         let scheduler = RuntimeSchedulerSpy()
@@ -159,8 +187,20 @@ struct SymphonyOrchestratorWorkflowReloadTests {
 
     @Test
     func reloadAppliesToFutureWorkerLaunchesOnly() async throws {
-        let firstIssue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Todo")
-        let secondIssue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-2", identifier: "ABC-2", priority: 1, state: "Todo")
+        let firstIssue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+            id: "issue-1",
+            identifier: "ABC-1",
+            priority: 1,
+            state: "Todo",
+            stateType: "unstarted"
+        )
+        let secondIssue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+            id: "issue-2",
+            identifier: "ABC-2",
+            priority: 1,
+            state: "Todo",
+            stateType: "unstarted"
+        )
         let tracker = RuntimeIssueTrackerReadSpy(
             candidateResponses: [
                 .success([firstIssue]),
@@ -199,7 +239,13 @@ struct SymphonyOrchestratorWorkflowReloadTests {
                 issueID: "issue-1",
                 issueIdentifier: "ABC-1",
                 terminalReason: .succeeded,
-                refreshedIssue: SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Done")
+                refreshedIssue: SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+                    id: "issue-1",
+                    identifier: "ABC-1",
+                    priority: 1,
+                    state: "Done",
+                    stateType: "completed"
+                )
             )
         )
 

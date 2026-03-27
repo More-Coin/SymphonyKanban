@@ -17,8 +17,8 @@ public struct SymphonyAuthController {
             kind: "linear",
             endpoint: nil,
             projectSlug: nil,
-            activeStates: [],
-            terminalStates: []
+            activeStateTypes: [],
+            terminalStateTypes: []
         )
     }
 

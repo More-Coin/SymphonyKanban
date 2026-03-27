@@ -148,11 +148,12 @@ struct SymphonyPromptRendererPortAdapterTests {
             description: "Prompt body",
             priority: 2,
             state: "Todo",
+            stateType: "unstarted",
             branchName: "feature/abc-123",
             url: "https://linear.app/ABC-123",
             labels: ["Bug", "Needs-Review"],
             blockedBy: [
-                SymphonyIssueBlockerReference(id: "blocker-1", identifier: "ABC-1", state: "Done"),
+                SymphonyIssueBlockerReference(id: "blocker-1", identifier: "ABC-1", state: "Done", stateType: "completed"),
                 SymphonyIssueBlockerReference(id: "blocker-2", identifier: "ABC-2", state: nil)
             ],
             createdAt: Date(timeIntervalSince1970: 1_710_000_000),

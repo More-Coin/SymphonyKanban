@@ -6,14 +6,28 @@ import Testing
 struct SymphonyOrchestratorRuntimeReconciliationTests {
     @Test
     func reconciliationCancelsTerminalIssuesAndCleansWorkspace() async throws {
-        let activeIssue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Todo")
+        let activeIssue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+            id: "issue-1",
+            identifier: "ABC-1",
+            priority: 1,
+            state: "Todo",
+            stateType: "unstarted"
+        )
         let tracker = RuntimeIssueTrackerReadSpy(
             candidateResponses: [
                 .success([activeIssue]),
                 .success([])
             ],
             issueStateResponses: [
-                .success([SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Done")])
+                .success([
+                    SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+                        id: "issue-1",
+                        identifier: "ABC-1",
+                        priority: 1,
+                        state: "Done",
+                        stateType: "completed"
+                    )
+                ])
             ]
         )
         let workspacePort = RuntimeWorkspaceLifecycleSpy()
@@ -50,7 +64,13 @@ struct SymphonyOrchestratorRuntimeReconciliationTests {
 
     @Test
     func stallDetectionUsesLastCodexTimestampAndHonorsDisablement() async throws {
-        let issue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(id: "issue-1", identifier: "ABC-1", priority: 1, state: "Todo")
+        let issue = SymphonyOrchestratorRuntimeTestSupport.makeIssue(
+            id: "issue-1",
+            identifier: "ABC-1",
+            priority: 1,
+            state: "Todo",
+            stateType: "unstarted"
+        )
 
         let enabledTracker = RuntimeIssueTrackerReadSpy(
             candidateResponses: [

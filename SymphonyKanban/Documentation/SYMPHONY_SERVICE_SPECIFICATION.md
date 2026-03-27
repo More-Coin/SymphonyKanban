@@ -152,7 +152,9 @@ Fields:
 - `priority` (integer or null)
   - Lower numbers are higher priority in dispatch sorting.
 - `state` (string)
-  - Current tracker state name.
+  - Current tracker state display name.
+- `state_type` (string)
+  - Current tracker state type, used for filtering and classification.
 - `branch_name` (string or null)
   - Tracker-provided branch metadata if available.
 - `url` (string or null)
@@ -347,10 +349,12 @@ Fields:
   - Default for `tracker.kind == "linear"`: `https://api.linear.app/graphql`
 - `project_slug` (string)
   - Required for dispatch when `tracker.kind == "linear"`.
-- `active_states` (list of strings)
-  - Default: `Todo`, `In Progress`
-- `terminal_states` (list of strings)
-  - Default: `Closed`, `Cancelled`, `Canceled`, `Duplicate`, `Done`
+- `active_state_types` (list of strings)
+  - Default: `backlog`, `unstarted`, `started`
+  - These are Linear semantic state types, not display labels.
+- `terminal_state_types` (list of strings)
+  - Default: `completed`, `canceled`
+  - These are Linear semantic state types, not display labels.
 - Interactive Linear auth uses a stored OAuth session instead of `tracker.api_key`.
 - Linear OAuth provider configuration is supplied outside workflow front matter:
   - `LINEAR_OAUTH_CLIENT_ID` (required)
@@ -556,8 +560,8 @@ This section is intentionally redundant so a coding agent can implement the conf
 - `tracker.kind`: string, required, currently `linear`
 - `tracker.endpoint`: string, default `https://api.linear.app/graphql` when `tracker.kind=linear`
 - `tracker.project_slug`: string, required when `tracker.kind=linear`
-- `tracker.active_states`: list of strings, default `["Todo", "In Progress"]`
-- `tracker.terminal_states`: list of strings, default `["Closed", "Cancelled", "Canceled", "Duplicate", "Done"]`
+- `tracker.active_state_types`: list of strings, default `["backlog", "unstarted", "started"]`
+- `tracker.terminal_state_types`: list of strings, default `["completed", "canceled"]`
 - Linear OAuth env (App/runtime): `LINEAR_OAUTH_CLIENT_ID`, `LINEAR_OAUTH_REDIRECT_URI`, optional `LINEAR_OAUTH_CLIENT_SECRET`, optional `LINEAR_OAUTH_SCOPES`
 - `polling.interval_ms`: integer, default `30000`
 - `workspace.root`: path, default `<system-temp>/symphony_workspaces`
@@ -591,7 +595,8 @@ reported back to it and converted into explicit state transitions.
 
 ### 7.1 Issue Orchestration States
 
-This is not the same as tracker states (`Todo`, `In Progress`, etc.). This is the service's internal
+This is not the same as tracker state display names (`Todo`, `In Progress`, etc.) or tracker state
+types (`backlog`, `unstarted`, `started`, etc.). This is the service's internal
 claim state.
 
 1. `Unclaimed`
@@ -708,13 +713,13 @@ first.
 An issue is dispatch-eligible only if all are true:
 
 - It has `id`, `identifier`, `title`, and `state`.
-- Its state is in `active_states` and not in `terminal_states`.
+- Its state type is in `active_state_types` and not in `terminal_state_types`.
 - It is not already in `running`.
 - It is not already in `claimed`.
 - Global concurrency slots are available.
 - Per-state concurrency slots are available.
-- Blocker rule for `Todo` state passes:
-  - If the issue state is `Todo`, do not dispatch when any blocker is non-terminal.
+- Blocker rule for `unstarted` / `backlog` issues passes:
+  - If the issue state type is `unstarted` or `backlog`, do not dispatch when any blocker is non-terminal.
 
 Sorting order (stable intent):
 
@@ -1768,9 +1773,9 @@ function reconcile_running_issues(state):
     return state
 
   for issue in refreshed:
-    if issue.state in terminal_states:
+    if issue.state_type in terminal_state_types:
       state = terminate_running_issue(state, issue.id, cleanup_workspace=true)
-    else if issue.state in active_states:
+    else if issue.state_type in active_state_types:
       state.running[issue.id].issue = issue
     else:
       state = terminate_running_issue(state, issue.id, cleanup_workspace=false)
@@ -1995,8 +2000,8 @@ Unless otherwise noted, Sections 17.1 through 17.7 are `Core Conformance`. Bulle
 ### 17.4 Orchestrator Dispatch, Reconciliation, and Retry
 
 - Dispatch sort order is priority then oldest creation time
-- `Todo` issue with non-terminal blockers is not eligible
-- `Todo` issue with terminal blockers is eligible
+- `unstarted` / `backlog` issue with non-terminal blockers is not eligible
+- `unstarted` / `backlog` issue with terminal blockers is eligible
 - Active-state issue refresh updates running entry state
 - Non-active state stops running agent without workspace cleanup
 - Terminal state stops running agent and cleans workspace

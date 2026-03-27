@@ -30,15 +30,15 @@ enum SymphonyOrchestratorStateTestSupport {
         maxConcurrentAgents: Int = 5,
         maxConcurrentAgentsByState: [String: Int] = [:],
         maxRetryBackoffMs: Int = 300_000,
-        terminalStates: [String] = ["Done", "Canceled", "Cancelled", "Duplicate"]
+        terminalStateTypes: [String] = ["completed", "canceled"]
     ) -> SymphonyServiceConfigContract {
         SymphonyServiceConfigContract(
             tracker: .init(
                 kind: "linear",
                 endpoint: "https://api.linear.app/graphql",
                 projectSlug: "proj",
-                activeStates: ["Todo", "In Progress"],
-                terminalStates: terminalStates
+                activeStateTypes: ["backlog", "unstarted", "started"],
+                terminalStateTypes: terminalStateTypes
             ),
             polling: .init(intervalMs: 30_000),
             workspace: .init(rootPath: "/tmp/symphony_workspaces"),
@@ -72,6 +72,7 @@ enum SymphonyOrchestratorStateTestSupport {
         identifier: String,
         priority: Int?,
         state: String,
+        stateType: String,
         blockedBy: [SymphonyIssueBlockerReference] = [],
         createdAt: Date? = nil
     ) -> SymphonyIssue {
@@ -82,6 +83,7 @@ enum SymphonyOrchestratorStateTestSupport {
             description: nil,
             priority: priority,
             state: state,
+            stateType: stateType,
             branchName: nil,
             url: nil,
             labels: [],
