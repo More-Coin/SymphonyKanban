@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/home/Documents/Clean Architecture V1/SymphonyV2/SymphonyKanban/**)",
+      "Bash(xcodebuild build:*)",
+      "Bash(xcodebuild -scheme SymphonyKanban -destination 'platform=macOS' build)",
+      "Bash(swift build:*)",
+      "Bash(xcodebuild -project SymphonyKanban.xcodeproj -list)",
+      "Bash(xcodebuild -scheme SymphonyKanban -configuration Debug build)"
+    ]
+  }
+}

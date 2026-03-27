@@ -4,13 +4,16 @@ import Foundation
 public struct SymphonyDispatchPreflightValidationService {
     private let resolveWorkflowConfigurationUseCase: ResolveSymphonyWorkflowConfigurationUseCase
     private let validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase
+    private let validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase
 
     public init(
         resolveWorkflowConfigurationUseCase: ResolveSymphonyWorkflowConfigurationUseCase,
-        validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase
+        validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase,
+        validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase
     ) {
         self.resolveWorkflowConfigurationUseCase = resolveWorkflowConfigurationUseCase
         self.validateStartupConfigurationUseCase = validateStartupConfigurationUseCase
+        self.validateTrackerConnectionUseCase = validateTrackerConnectionUseCase
     }
 
     public func validateForDispatch(
@@ -20,6 +23,9 @@ public struct SymphonyDispatchPreflightValidationService {
             let configuration = try resolveWorkflowConfigurationUseCase.resolveValidated(
                 request,
                 validateStartupConfigurationUseCase: validateStartupConfigurationUseCase
+            )
+            _ = try validateTrackerConnectionUseCase.validate(
+                configuration.serviceConfig.tracker
             )
             return .ready(configuration)
         } catch {

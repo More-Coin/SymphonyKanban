@@ -2,7 +2,7 @@ import Foundation
 
 struct LinearIssueTrackerRequestDefinition {
     let endpoint: String
-    let apiKey: String
+    let authorizationHeader: String
     let operationName: String
     let payload: LinearGraphQLRequestDTO
 }
@@ -10,10 +10,12 @@ struct LinearIssueTrackerRequestDefinition {
 struct LinearIssueTrackerRequestDefinitionModel {
     func makeCandidateIssuesRequestDefinition(
         using configuration: LinearNormalizedTrackerConfiguration,
+        authorizationHeader: String,
         afterCursor: String?
     ) -> LinearIssueTrackerRequestDefinition {
         makeRequestDefinition(
             using: configuration,
+            authorizationHeader: authorizationHeader,
             operationName: "FetchCandidateIssues",
             query: candidateIssuesQuery,
             variables: [
@@ -26,11 +28,13 @@ struct LinearIssueTrackerRequestDefinitionModel {
 
     func makeIssuesByStatesRequestDefinition(
         using configuration: LinearNormalizedTrackerConfiguration,
+        authorizationHeader: String,
         states: [String],
         afterCursor: String?
     ) -> LinearIssueTrackerRequestDefinition {
         makeRequestDefinition(
             using: configuration,
+            authorizationHeader: authorizationHeader,
             operationName: "FetchIssuesByStates",
             query: issuesByStatesQuery,
             variables: [
@@ -43,10 +47,12 @@ struct LinearIssueTrackerRequestDefinitionModel {
 
     func makeIssueStatesByIDsRequestDefinition(
         using configuration: LinearNormalizedTrackerConfiguration,
+        authorizationHeader: String,
         issueIDs: [String]
     ) -> LinearIssueTrackerRequestDefinition {
         makeRequestDefinition(
             using: configuration,
+            authorizationHeader: authorizationHeader,
             operationName: "FetchIssueStatesByIDs",
             query: issueStatesByIDsQuery,
             variables: [
@@ -57,13 +63,14 @@ struct LinearIssueTrackerRequestDefinitionModel {
 
     private func makeRequestDefinition(
         using configuration: LinearNormalizedTrackerConfiguration,
+        authorizationHeader: String,
         operationName: String,
         query: String,
         variables: [String: LinearGraphQLVariableDTO]
     ) -> LinearIssueTrackerRequestDefinition {
         LinearIssueTrackerRequestDefinition(
             endpoint: configuration.endpoint,
-            apiKey: configuration.apiKey,
+            authorizationHeader: authorizationHeader,
             operationName: operationName,
             payload: LinearGraphQLRequestDTO(
                 query: query,

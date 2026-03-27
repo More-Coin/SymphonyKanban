@@ -1,3 +1,4 @@
+import Foundation
 import Dispatch
 
 struct SymphonyCLIDI {
@@ -15,8 +16,12 @@ struct SymphonyCLIDI {
         let hostStartupComponents = makeStartupComponents()
         let runtimeStartupComponents = makeStartupComponents()
         let logSinkAdapter = SymphonyConsoleOrchestratorLogSinkPortAdapter()
+        let environment = ProcessInfo.processInfo.environment
+
         let runnerGatewayFactory: @Sendable () -> SymphonyWorkerAttemptService = {
-            let issueTrackerGateway = SymphonyLinearIssueTrackerGateway()
+            let issueTrackerGateway = SymphonyLinearIssueTrackerGateway(
+                environment: environment
+            )
             let workspaceGateway = SymphonyWorkspaceLifecycleGateway()
             let runnerGateway = SymphonyCodexRunnerGateway()
             return SymphonyWorkerAttemptService(
@@ -43,10 +48,13 @@ struct SymphonyCLIDI {
                 telemetryPort: SymphonyWorkerAttemptTelemetryPortAdapter(logSink: logSinkAdapter)
             )
         }
+
         let runtimeService = SymphonyOrchestratorRuntimeService(
             dispatchPreflightValidationService: runtimeStartupComponents.dispatchPreflightValidationService,
             fetchIssuesUseCase: FetchSymphonyIssuesUseCase(
-                issueTrackerReadPort: SymphonyLinearIssueTrackerGateway()
+                issueTrackerReadPort: SymphonyLinearIssueTrackerGateway(
+                    environment: environment
+                )
             ),
             cleanupWorkspaceUseCase: CleanupSymphonyWorkspaceUseCase(
                 workspaceLifecyclePort: SymphonyWorkspaceLifecycleGateway()
@@ -68,6 +76,7 @@ struct SymphonyCLIDI {
         return SymphonyServiceHostRuntime(
             resolveWorkflowConfigurationUseCase: hostStartupComponents.resolveWorkflowConfigurationUseCase,
             validateStartupConfigurationUseCase: hostStartupComponents.validateStartupConfigurationUseCase,
+            validateTrackerConnectionUseCase: hostStartupComponents.validateTrackerConnectionUseCase,
             renderer: SymphonyStartupRenderer(),
             startRuntime: { command, workflowConfiguration in
                 Task {
@@ -86,9 +95,14 @@ struct SymphonyCLIDI {
     private static func makeStartupComponents() -> (
         resolveWorkflowConfigurationUseCase: ResolveSymphonyWorkflowConfigurationUseCase,
         validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase,
+        validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase,
         dispatchPreflightValidationService: SymphonyDispatchPreflightValidationService,
         startupService: SymphonyStartupService
     ) {
+        let environment = ProcessInfo.processInfo.environment
+        let trackerAuthPortAdapter = SymphonyLinearTrackerAuthPortAdapter(
+            environment: environment
+        )
         let resolveWorkflowConfigurationUseCase = ResolveSymphonyWorkflowConfigurationUseCase(
             workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(),
             configResolverPort: SymphonyConfigResolverPortAdapter()
@@ -96,17 +110,23 @@ struct SymphonyCLIDI {
         let validateStartupConfigurationUseCase = ValidateSymphonyStartupConfigurationUseCase(
             startupConfigurationValidatorPort: ValidateSymphonyStartupConfigurationPortAdapter()
         )
+        let validateTrackerConnectionUseCase = ValidateSymphonyTrackerConnectionReadinessUseCase(
+            trackerAuthPort: trackerAuthPortAdapter
+        )
         let dispatchPreflightValidationService = SymphonyDispatchPreflightValidationService(
             resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase,
-            validateStartupConfigurationUseCase: validateStartupConfigurationUseCase
+            validateStartupConfigurationUseCase: validateStartupConfigurationUseCase,
+            validateTrackerConnectionUseCase: validateTrackerConnectionUseCase
         )
         let startupService = SymphonyStartupService(
             resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase,
-            validateStartupConfigurationUseCase: validateStartupConfigurationUseCase
+            validateStartupConfigurationUseCase: validateStartupConfigurationUseCase,
+            validateTrackerConnectionUseCase: validateTrackerConnectionUseCase
         )
         return (
             resolveWorkflowConfigurationUseCase,
             validateStartupConfigurationUseCase,
+            validateTrackerConnectionUseCase,
             dispatchPreflightValidationService,
             startupService
         )

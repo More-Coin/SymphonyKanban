@@ -6,7 +6,6 @@ enum SymphonyLinearIssueTrackerGatewayTestSupport {
         SymphonyServiceConfigContract.Tracker(
             kind: "linear",
             endpoint: "https://api.linear.app/graphql",
-            apiKey: "linear-token",
             projectSlug: "project-slug",
             activeStates: ["Todo", "In Progress"],
             terminalStates: ["Done", "Canceled"]
@@ -55,6 +54,31 @@ enum SymphonyLinearIssueTrackerGatewayTestSupport {
         let formatter = ISO8601DateFormatter()
         return formatter.date(from: value)!
     }
+
+    static func makeGateway(
+        executor: @escaping SymphonyLinearIssueTrackerGateway.RequestExecutor,
+        accessToken: String = "linear-token"
+    ) -> SymphonyLinearIssueTrackerGateway {
+        SymphonyLinearIssueTrackerGateway(
+            jsonDecoder: JSONDecoder(),
+            jsonEncoder: JSONEncoder(),
+            requestExecutor: executor,
+            environment: [:],
+            secureStore: LinearOAuthIssueTrackerSecureStoreSpy(
+                session: LinearOAuthSessionModel(
+                    accessToken: accessToken,
+                    refreshToken: nil,
+                    tokenType: "Bearer",
+                    scope: ["read"],
+                    connectedAt: Date(timeIntervalSince1970: 1),
+                    expiresAt: nil,
+                    invalidatedAt: nil,
+                    lastErrorDescription: nil
+                )
+            ),
+            oauthGateway: SymphonyLinearOAuthGateway()
+        )
+    }
 }
 
 actor LinearRequestExecutorSpy {
@@ -78,5 +102,42 @@ actor LinearRequestExecutorSpy {
 
     func requests() -> [URLRequest] {
         recordedRequests
+    }
+}
+
+final class LinearOAuthIssueTrackerSecureStoreSpy: LinearOAuthSecureStoreProtocol, @unchecked Sendable {
+    private var storedSession: LinearOAuthSessionModel?
+    private var pendingAuthorization: LinearOAuthPendingAuthorizationModel?
+
+    init(
+        session: LinearOAuthSessionModel? = nil,
+        pendingAuthorization: LinearOAuthPendingAuthorizationModel? = nil
+    ) {
+        self.storedSession = session
+        self.pendingAuthorization = pendingAuthorization
+    }
+
+    func loadSession() throws -> LinearOAuthSessionModel? {
+        storedSession
+    }
+
+    func saveSession(_ session: LinearOAuthSessionModel) throws {
+        storedSession = session
+    }
+
+    func clearSession() throws {
+        storedSession = nil
+    }
+
+    func loadPendingAuthorization() throws -> LinearOAuthPendingAuthorizationModel? {
+        pendingAuthorization
+    }
+
+    func savePendingAuthorization(_ pendingAuthorization: LinearOAuthPendingAuthorizationModel) throws {
+        self.pendingAuthorization = pendingAuthorization
+    }
+
+    func clearPendingAuthorization() throws {
+        pendingAuthorization = nil
     }
 }

@@ -2,8 +2,9 @@ import Foundation
 
 public enum SymphonyIssueTrackerInfrastructureError: StructuredErrorProtocol, LocalizedError {
     case unsupportedTrackerKind(actualKind: String?)
-    case missingTrackerAPIKey
     case missingTrackerProjectSlug
+    case missingTrackerSession
+    case staleTrackerSession(details: String?)
     case linearAPIRequest(details: String)
     case linearAPIStatus(statusCode: Int, responseBody: String?)
     case linearGraphQLErrors(messages: [String])
@@ -14,10 +15,12 @@ public enum SymphonyIssueTrackerInfrastructureError: StructuredErrorProtocol, Lo
         switch self {
         case .unsupportedTrackerKind:
             return "symphony.tracker.unsupported_tracker_kind"
-        case .missingTrackerAPIKey:
-            return "symphony.tracker.missing_tracker_api_key"
         case .missingTrackerProjectSlug:
             return "symphony.tracker.missing_tracker_project_slug"
+        case .missingTrackerSession:
+            return "symphony.tracker.missing_tracker_session"
+        case .staleTrackerSession:
+            return "symphony.tracker.stale_tracker_session"
         case .linearAPIRequest:
             return "symphony.tracker.linear_api_request"
         case .linearAPIStatus:
@@ -35,10 +38,12 @@ public enum SymphonyIssueTrackerInfrastructureError: StructuredErrorProtocol, Lo
         switch self {
         case .unsupportedTrackerKind:
             return "The configured tracker kind is not supported by the Linear read gateway."
-        case .missingTrackerAPIKey:
-            return "The workflow configuration is missing the tracker API key."
         case .missingTrackerProjectSlug:
             return "The workflow configuration is missing the tracker project slug."
+        case .missingTrackerSession:
+            return "No stored tracker session is available for Linear."
+        case .staleTrackerSession:
+            return "The stored Linear tracker session is stale."
         case .linearAPIRequest:
             return "The Linear API request failed before a valid HTTP response was received."
         case .linearAPIStatus:
@@ -57,8 +62,9 @@ public enum SymphonyIssueTrackerInfrastructureError: StructuredErrorProtocol, Lo
         case .linearAPIRequest, .linearAPIStatus:
             return true
         case .unsupportedTrackerKind,
-             .missingTrackerAPIKey,
              .missingTrackerProjectSlug,
+             .missingTrackerSession,
+             .staleTrackerSession,
              .linearGraphQLErrors,
              .linearUnknownPayload,
              .linearMissingEndCursor:
@@ -70,10 +76,12 @@ public enum SymphonyIssueTrackerInfrastructureError: StructuredErrorProtocol, Lo
         switch self {
         case .unsupportedTrackerKind(let actualKind):
             return actualKind.map { "Received configured tracker kind `\($0)`." }
-        case .missingTrackerAPIKey:
-            return "Set the tracker API key directly or through a non-empty environment variable."
         case .missingTrackerProjectSlug:
             return "Set `tracker.project_slug` in the workflow configuration."
+        case .missingTrackerSession:
+            return "Connect Linear through the OAuth flow before fetching issues."
+        case .staleTrackerSession(let details):
+            return details ?? "Reconnect Linear to replace the stale stored session."
         case .linearAPIRequest(let details):
             return details
         case .linearAPIStatus(let statusCode, let responseBody):

@@ -345,16 +345,18 @@ Fields:
   - Current supported value: `linear`
 - `endpoint` (string)
   - Default for `tracker.kind == "linear"`: `https://api.linear.app/graphql`
-- `api_key` (string)
-  - May be a literal token or `$VAR_NAME`.
-  - Canonical environment variable for `tracker.kind == "linear"`: `LINEAR_API_KEY`.
-  - If `$VAR_NAME` resolves to an empty string, treat the key as missing.
 - `project_slug` (string)
   - Required for dispatch when `tracker.kind == "linear"`.
 - `active_states` (list of strings)
   - Default: `Todo`, `In Progress`
 - `terminal_states` (list of strings)
   - Default: `Closed`, `Cancelled`, `Canceled`, `Duplicate`, `Done`
+- Interactive Linear auth uses a stored OAuth session instead of `tracker.api_key`.
+- Linear OAuth provider configuration is supplied outside workflow front matter:
+  - `LINEAR_OAUTH_CLIENT_ID` (required)
+  - `LINEAR_OAUTH_REDIRECT_URI` (required)
+  - `LINEAR_OAUTH_CLIENT_SECRET` (optional)
+  - `LINEAR_OAUTH_SCOPES` (optional, default `read`)
 
 #### 5.3.2 `polling` (object)
 
@@ -543,8 +545,8 @@ Validation checks:
 
 - Workflow file can be loaded and parsed.
 - `tracker.kind` is present and supported.
-- `tracker.api_key` is present after `$` resolution.
 - `tracker.project_slug` is present when required by the selected tracker kind.
+- Tracker auth/session status is connected and not stale.
 - `codex.command` is present and non-empty.
 
 ### 6.4 Config Fields Summary (Cheat Sheet)
@@ -553,10 +555,10 @@ This section is intentionally redundant so a coding agent can implement the conf
 
 - `tracker.kind`: string, required, currently `linear`
 - `tracker.endpoint`: string, default `https://api.linear.app/graphql` when `tracker.kind=linear`
-- `tracker.api_key`: string or `$VAR`, canonical env `LINEAR_API_KEY` when `tracker.kind=linear`
 - `tracker.project_slug`: string, required when `tracker.kind=linear`
 - `tracker.active_states`: list of strings, default `["Todo", "In Progress"]`
 - `tracker.terminal_states`: list of strings, default `["Closed", "Cancelled", "Canceled", "Duplicate", "Done"]`
+- Linear OAuth env (App/runtime): `LINEAR_OAUTH_CLIENT_ID`, `LINEAR_OAUTH_REDIRECT_URI`, optional `LINEAR_OAUTH_CLIENT_SECRET`, optional `LINEAR_OAUTH_SCOPES`
 - `polling.interval_ms`: integer, default `30000`
 - `workspace.root`: path, default `<system-temp>/symphony_workspaces`
 - `worker.ssh_hosts` (extension): list of SSH host strings, optional; when omitted, work runs
@@ -1203,7 +1205,8 @@ Additional normalization details:
 Recommended error categories:
 
 - `unsupported_tracker_kind`
-- `missing_tracker_api_key`
+- `tracker_auth_not_connected`
+- `tracker_session_stale`
 - `missing_tracker_project_slug`
 - `linear_api_request` (transport failures)
 - `linear_api_status` (non-200 HTTP)
@@ -1953,8 +1956,8 @@ Unless otherwise noted, Sections 17.1 through 17.7 are `Core Conformance`. Bulle
 - Front matter non-map returns typed error
 - Config defaults apply when optional values are missing
 - `tracker.kind` validation enforces currently supported kind (`linear`)
-- `tracker.api_key` works (including `$VAR` indirection)
-- `$VAR` resolution works for tracker API key and path values
+- Interactive Linear auth uses the stored OAuth session rather than workflow-supplied API keys
+- `$VAR` resolution still works for filesystem path values, and legacy `tracker.api_key` input is ignored for interactive Linear auth
 - `~` path expansion works
 - `codex.command` is preserved as a shell command string
 - Per-state concurrency override map normalizes state names and ignores invalid values
@@ -2062,8 +2065,8 @@ Unless otherwise noted, Sections 17.1 through 17.7 are `Core Conformance`. Bulle
 These checks are recommended for production readiness and may be skipped in CI when credentials,
 network access, or external service permissions are unavailable.
 
-- A real tracker smoke test can be run with valid credentials supplied by `LINEAR_API_KEY` or a
-  documented local bootstrap mechanism (for example `~/.linear_api_key`).
+- A real tracker smoke test can be run after completing the Linear OAuth connect flow with valid
+  `LINEAR_OAUTH_CLIENT_ID` and `LINEAR_OAUTH_REDIRECT_URI` configuration.
 - Real integration tests should use isolated test identifiers/workspaces and clean up tracker
   artifacts when practical.
 - A skipped real-integration test should be reported as skipped, not silently treated as passed.

@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import SymphonyKanban
 
-struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
+struct SymphonyWorkflowResolverPortAdapterTests {
     @Test
     func missingWorkflowFileReturnsTypedError() {
         let useCase = SymphonyWorkflowConfigurationTestSupport.makeUseCase()
@@ -97,7 +97,7 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
     }
 
     @Test
-    func configResolverAppliesBuiltInDefaultsAcrossTheCoreConfigSurface() throws {
+    func resolverAppliesBuiltInDefaultsAcrossTheCoreSurface() throws {
         let fileURL = try SymphonyWorkflowConfigurationTestSupport.makeWorkflowFile(
             named: "DefaultConfig.md",
             contents: """
@@ -124,7 +124,6 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
 
         #expect(result.serviceConfig.tracker.kind == "linear")
         #expect(result.serviceConfig.tracker.endpoint == "https://api.linear.app/graphql")
-        #expect(result.serviceConfig.tracker.apiKey == nil)
         #expect(result.serviceConfig.tracker.projectSlug == nil)
         #expect(result.serviceConfig.tracker.activeStates == ["Todo", "In Progress"])
         #expect(
@@ -177,7 +176,7 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
     }
 
     @Test
-    func configResolverCoversTheFullCoreConfigSurfaceAndPassThroughFields() throws {
+    func resolverCoversTheFullCoreSurfaceAndPassThroughFields() throws {
         let fileURL = try SymphonyWorkflowConfigurationTestSupport.makeWorkflowFile(
             named: "FullTypedConfig.md",
             contents: """
@@ -185,7 +184,6 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
             tracker:
               kind: linear
               endpoint: https://example.invalid/graphql
-              api_key: literal-api-key
               project_slug: symphony
               active_states:
                 - Backlog
@@ -249,7 +247,6 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
 
         #expect(result.serviceConfig.tracker.kind == "linear")
         #expect(result.serviceConfig.tracker.endpoint == "https://example.invalid/graphql")
-        #expect(result.serviceConfig.tracker.apiKey == "literal-api-key")
         #expect(result.serviceConfig.tracker.projectSlug == "symphony")
         #expect(result.serviceConfig.tracker.activeStates == ["Backlog", "In Progress"])
         #expect(result.serviceConfig.tracker.terminalStates == ["Done", "Canceled"])
@@ -288,7 +285,7 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
     }
 
     @Test
-    func configResolverAppliesPathExpansionOnlyToFilesystemPathValues() throws {
+    func resolverAppliesPathExpansionOnlyToFilesystemPathValues() throws {
         let fileURL = try SymphonyWorkflowConfigurationTestSupport.makeWorkflowFile(
             named: "PathExpansionBoundaries.md",
             contents: """
@@ -296,7 +293,6 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
             tracker:
               kind: linear
               endpoint: $LINEAR_ENDPOINT
-              api_key: $LINEAR_API_KEY
               project_slug: project
             workspace:
               root: $WORKSPACE_ROOT
@@ -310,7 +306,6 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
         let workspaceRoot = SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().appendingPathComponent("expanded-root").path
         let useCase = SymphonyWorkflowConfigurationTestSupport.makeUseCase(
             environment: [
-                "LINEAR_API_KEY": "linear-token",
                 "LINEAR_ENDPOINT": "https://env.invalid/graphql",
                 "WORKSPACE_ROOT": workspaceRoot,
                 "CODEX_COMMAND": "codex app-server --profile env"
@@ -324,7 +319,6 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
         )
 
         #expect(result.serviceConfig.tracker.endpoint == "$LINEAR_ENDPOINT")
-        #expect(result.serviceConfig.tracker.apiKey == "linear-token")
         #expect(
             result.serviceConfig.workspace.rootPath ==
                 URL(fileURLWithPath: workspaceRoot).standardizedFileURL.path
@@ -389,12 +383,13 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
     }
 
     @Test
-    func emptyEnvironmentAPIKeyBecomesMissing() throws {
+    func legacyAPIKeyInputIsIgnoredDuringResolution() throws {
         let fileURL = try SymphonyWorkflowConfigurationTestSupport.makeWorkflowFile(
             named: "EnvAPIKey.md",
             contents: """
             ---
             tracker:
+              kind: linear
               api_key: $LINEAR_API_KEY
             ---
             Prompt body.
@@ -413,6 +408,7 @@ struct SymphonyWorkflowLoaderAndConfigResolverAdapterTests {
             )
         )
 
-        #expect(result.serviceConfig.tracker.apiKey == nil)
+        #expect(result.serviceConfig.tracker.kind == "linear")
+        #expect(result.serviceConfig.tracker.endpoint == "https://api.linear.app/graphql")
     }
 }

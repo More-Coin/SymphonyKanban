@@ -82,8 +82,8 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
             }
             """))
         ])
-        let gateway = SymphonyLinearIssueTrackerGateway(
-            requestExecutor: { request in
+        let gateway = SymphonyLinearIssueTrackerGatewayTestSupport.makeGateway(
+            executor: { request in
                 try await executor.execute(request)
             }
         )
@@ -127,8 +127,8 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
             }
             """))
         ])
-        let gateway = SymphonyLinearIssueTrackerGateway(
-            requestExecutor: { request in
+        let gateway = SymphonyLinearIssueTrackerGatewayTestSupport.makeGateway(
+            executor: { request in
                 try await executor.execute(request)
             }
         )
@@ -137,7 +137,6 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
             using: SymphonyServiceConfigContract.Tracker(
                 kind: "linear",
                 endpoint: nil,
-                apiKey: "linear-token",
                 projectSlug: "project-slug",
                 activeStates: ["Todo", "In Progress"],
                 terminalStates: ["Done", "Canceled"]
@@ -148,7 +147,7 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
         let requestBody = try SymphonyLinearIssueTrackerGatewayTestSupport.requestBody(request)
 
         #expect(request.url?.absoluteString == "https://api.linear.app/graphql")
-        #expect(request.value(forHTTPHeaderField: "Authorization") == "linear-token")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer linear-token")
         #expect(request.timeoutInterval == 30)
         #expect(requestBody.query.contains("first: 50"))
     }
@@ -164,8 +163,8 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
             }
             """))
         ])
-        let gateway = SymphonyLinearIssueTrackerGateway(
-            requestExecutor: { request in
+        let gateway = SymphonyLinearIssueTrackerGatewayTestSupport.makeGateway(
+            executor: { request in
                 try await executor.execute(request)
             }
         )
@@ -186,8 +185,8 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
             }
             """))
         ])
-        let gateway = SymphonyLinearIssueTrackerGateway(
-            requestExecutor: { request in
+        let gateway = SymphonyLinearIssueTrackerGatewayTestSupport.makeGateway(
+            executor: { request in
                 try await executor.execute(request)
             }
         )
@@ -214,8 +213,8 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
         let executor = LinearRequestExecutorSpy(results: [
             .failure(StubTransportError())
         ])
-        let gateway = SymphonyLinearIssueTrackerGateway(
-            requestExecutor: { request in
+        let gateway = SymphonyLinearIssueTrackerGatewayTestSupport.makeGateway(
+            executor: { request in
                 try await executor.execute(request)
             }
         )
@@ -250,8 +249,8 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
             }
             """))
         ])
-        let gateway = SymphonyLinearIssueTrackerGateway(
-            requestExecutor: { request in
+        let gateway = SymphonyLinearIssueTrackerGatewayTestSupport.makeGateway(
+            executor: { request in
                 try await executor.execute(request)
             }
         )

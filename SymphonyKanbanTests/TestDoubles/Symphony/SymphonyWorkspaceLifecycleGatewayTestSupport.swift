@@ -25,14 +25,12 @@ struct WorkspaceLifecycleTestEnvironment {
             afterRun: nil,
             beforeRemove: nil,
             timeoutMs: 60000
-        ),
-        trackerAPIKey: String? = nil
+        )
     ) -> SymphonyServiceConfigContract {
         SymphonyServiceConfigContract(
             tracker: .init(
                 kind: "linear",
                 endpoint: "https://api.linear.app/graphql",
-                apiKey: trackerAPIKey,
                 projectSlug: "project-slug",
                 activeStates: ["Todo", "In Progress"],
                 terminalStates: ["Done", "Canceled"]

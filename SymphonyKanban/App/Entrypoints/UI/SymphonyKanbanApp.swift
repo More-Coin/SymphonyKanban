@@ -12,8 +12,15 @@ struct SymphonyKanbanApp: App {
 }
 
 private struct SymphonyKanbanRootView: View {
+    @State private var pendingTrackerAuthCallbackURL: URL?
+
     var body: some View {
-        SymphonyUIDI.makeNavigationRoutes()
+        SymphonyUIDI.makeNavigationRoutes(
+            pendingTrackerAuthCallbackURL: $pendingTrackerAuthCallbackURL
+        )
+        .onOpenURL { url in
+            pendingTrackerAuthCallbackURL = url
+        }
     }
 }
 

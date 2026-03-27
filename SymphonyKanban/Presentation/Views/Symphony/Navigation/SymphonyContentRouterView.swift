@@ -55,30 +55,24 @@ public struct SymphonyContentRouterView: View {
             }
         }
         .animation(SymphonyDesignStyle.Motion.smooth, value: selectedTab)
+        .searchable(text: $searchText, prompt: "Search issues...")
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                toolbarContent
-            }
-        }
-    }
+                HStack(spacing: SymphonyDesignStyle.Spacing.sm) {
+                    Button {
+                        onRefreshTapped()
+                    } label: {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(isRefreshing)
 
-    private var toolbarContent: some View {
-        HStack(spacing: SymphonyDesignStyle.Spacing.md) {
-            SymphonySearchFieldView(placeholder: "Search issues...", text: $searchText)
-                .frame(width: 200)
-
-            Button {
-                onRefreshTapped()
-            } label: {
-                Label("Refresh", systemImage: "arrow.clockwise")
-            }
-            .disabled(isRefreshing)
-
-            if selectedIssueIdentifier != nil {
-                Button {
-                    onToggleInspector()
-                } label: {
-                    Label("Inspector", systemImage: "sidebar.right")
+                    if selectedIssueIdentifier != nil {
+                        Button {
+                            onToggleInspector()
+                        } label: {
+                            Label("Inspector", systemImage: "sidebar.right")
+                        }
+                    }
                 }
             }
         }

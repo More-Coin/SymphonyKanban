@@ -31,7 +31,7 @@ struct LinearGraphQLTransportRequestBuilder {
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(requestDefinition.apiKey, forHTTPHeaderField: "Authorization")
+        request.setValue(requestDefinition.authorizationHeader, forHTTPHeaderField: "Authorization")
         request.setValue(requestDefinition.operationName, forHTTPHeaderField: "X-GraphQL-Operation-Name")
         request.httpBody = body
         return request

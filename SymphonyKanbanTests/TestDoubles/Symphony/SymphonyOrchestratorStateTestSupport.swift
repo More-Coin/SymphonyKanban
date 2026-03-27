@@ -36,7 +36,6 @@ enum SymphonyOrchestratorStateTestSupport {
             tracker: .init(
                 kind: "linear",
                 endpoint: "https://api.linear.app/graphql",
-                apiKey: "token",
                 projectSlug: "proj",
                 activeStates: ["Todo", "In Progress"],
                 terminalStates: terminalStates

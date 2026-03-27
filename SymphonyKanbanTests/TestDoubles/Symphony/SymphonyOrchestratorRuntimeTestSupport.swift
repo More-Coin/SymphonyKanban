@@ -14,6 +14,7 @@ enum SymphonyOrchestratorRuntimeTestSupport {
         workflowLoader: WorkflowLoaderSpy? = nil,
         configResolver: ConfigResolverSpy? = nil,
         validator: StartupValidatorSpy = StartupValidatorSpy(),
+        trackerAuthPort: TrackerAuthPortSpy = TrackerAuthPortSpy(),
         reloadMonitor: RuntimeWorkflowReloadMonitorSpy? = nil
     ) -> SymphonyOrchestratorRuntimeService {
         let workflowConfiguration = workflowConfiguration ?? makeWorkflowConfiguration()
@@ -28,6 +29,9 @@ enum SymphonyOrchestratorRuntimeTestSupport {
             ),
             validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase(
                 startupConfigurationValidatorPort: validator
+            ),
+            validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase(
+                trackerAuthPort: trackerAuthPort
             )
         )
 
@@ -68,7 +72,6 @@ enum SymphonyOrchestratorRuntimeTestSupport {
                 tracker: .init(
                     kind: "linear",
                     endpoint: "https://api.linear.app/graphql",
-                    apiKey: "token",
                     projectSlug: "proj",
                     activeStates: activeStates,
                     terminalStates: ["Done", "Canceled"]

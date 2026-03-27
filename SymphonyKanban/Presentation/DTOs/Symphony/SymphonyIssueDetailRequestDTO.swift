@@ -7,8 +7,8 @@ public struct SymphonyIssueDetailRequestDTO {
         self.issueIdentifier = Self.normalizedOptionalText(issueIdentifier)
     }
 
-    public func requestContract() -> SymphonyIssueDetailRequestContract {
-        SymphonyIssueDetailRequestContract(issueIdentifier: issueIdentifier)
+    public func queryParams() -> SymphonyIssueDetailQueryParams {
+        SymphonyIssueDetailQueryParams(issueIdentifier: issueIdentifier)
     }
 
     private static func normalizedOptionalText(_ text: String?) -> String? {
@@ -17,7 +17,7 @@ public struct SymphonyIssueDetailRequestDTO {
     }
 }
 
-public struct SymphonyIssueDetailRequestContract: Equatable, Sendable {
+public struct SymphonyIssueDetailQueryParams: Equatable, Sendable {
     public let issueIdentifier: String?
 
     public init(issueIdentifier: String?) {

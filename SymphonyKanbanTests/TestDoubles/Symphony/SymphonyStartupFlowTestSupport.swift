@@ -12,7 +12,8 @@ enum SymphonyStartupFlowTestSupport {
     }
 
     static func makeStartupService(
-        environment: [String: String] = [:]
+        environment: [String: String] = [:],
+        trackerAuthPort: any SymphonyTrackerAuthPortProtocol = TrackerAuthPortSpy()
     ) -> SymphonyStartupService {
         let resolveWorkflowConfigurationUseCase = ResolveSymphonyWorkflowConfigurationUseCase(
             workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(environment: environment),
@@ -23,12 +24,16 @@ enum SymphonyStartupFlowTestSupport {
         )
         return SymphonyStartupService(
             resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase,
-            validateStartupConfigurationUseCase: validateStartupConfigurationUseCase
+            validateStartupConfigurationUseCase: validateStartupConfigurationUseCase,
+            validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase(
+                trackerAuthPort: trackerAuthPort
+            )
         )
     }
 
     static func makeDispatchPreflightValidationService(
-        environment: [String: String] = [:]
+        environment: [String: String] = [:],
+        trackerAuthPort: any SymphonyTrackerAuthPortProtocol = TrackerAuthPortSpy()
     ) -> SymphonyDispatchPreflightValidationService {
         let resolveWorkflowConfigurationUseCase = ResolveSymphonyWorkflowConfigurationUseCase(
             workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(environment: environment),
@@ -41,12 +46,16 @@ enum SymphonyStartupFlowTestSupport {
 
         return SymphonyDispatchPreflightValidationService(
             resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase,
-            validateStartupConfigurationUseCase: validateStartupConfigurationUseCase
+            validateStartupConfigurationUseCase: validateStartupConfigurationUseCase,
+            validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase(
+                trackerAuthPort: trackerAuthPort
+            )
         )
     }
 
     static func makeHostRuntime(
         environment: [String: String] = [:],
+        trackerAuthPort: any SymphonyTrackerAuthPortProtocol = TrackerAuthPortSpy(),
         startRuntime: @escaping SymphonyServiceHostRuntime.StartRuntime,
         keepRunning: @escaping SymphonyServiceHostRuntime.KeepRunning
     ) -> SymphonyServiceHostRuntime {
@@ -61,6 +70,9 @@ enum SymphonyStartupFlowTestSupport {
         return SymphonyServiceHostRuntime(
             resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase,
             validateStartupConfigurationUseCase: validateStartupConfigurationUseCase,
+            validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase(
+                trackerAuthPort: trackerAuthPort
+            ),
             renderer: SymphonyStartupRenderer(),
             startRuntime: startRuntime,
             keepRunning: keepRunning

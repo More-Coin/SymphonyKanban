@@ -17,7 +17,7 @@ public struct SymphonyIssueDetailController {
     public func run(issueIdentifier: String? = nil) -> SymphonyIssueDetailView {
         let request = SymphonyIssueDetailRequestDTO(issueIdentifier: issueIdentifier)
         let result = runtimeQueryService.queryIssueDetailSnapshot(
-            issueIdentifier: request.requestContract().issueIdentifier ?? ""
+            issueIdentifier: request.queryParams().issueIdentifier ?? ""
         )
         let viewModel = presenter.present(result)
         return renderer.render(viewModel)

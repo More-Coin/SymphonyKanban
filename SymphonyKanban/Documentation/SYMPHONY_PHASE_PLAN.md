@@ -69,7 +69,6 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - [x] Make the typed config surface explicit and acceptance-tested for:
     - `tracker.kind`
     - `tracker.endpoint`
-    - `tracker.api_key`
     - `tracker.project_slug`
     - `tracker.active_states`
     - `tracker.terminal_states`
@@ -107,7 +106,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
     - `codex.read_timeout_ms` defaults to `5000`
     - `codex.stall_timeout_ms` defaults to `300000` and disables stall detection when `<= 0`
   - [x] Expand `~` and `$VAR` only for filesystem-path values, preserve bare relative `workspace.root` names that have no path separators, and do not rewrite arbitrary URIs or shell command strings such as `tracker.endpoint` or `codex.command`.
-  - [x] Resolve `tracker.api_key` from literal or `$VAR` input, treat an empty resolved value as missing, and keep secret values out of logs.
+  - [x] Treat legacy `tracker.api_key` input as ignored for interactive Linear auth, and keep secrets out of logs.
   - [x] Normalize `agent.max_concurrent_agents_by_state` keys to lowercase for lookup and ignore invalid entries while preserving global fallback behavior.
   - [x] Keep `codex.approval_policy`, `codex.thread_sandbox`, and `codex.turn_sandbox_policy` as pass-through Codex-owned config values unless the repo explicitly chooses stricter local validation.
   - Accepted `2026-03-21`.
@@ -130,8 +129,8 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - [x] Validate the startup dispatch prerequisites required by the spec:
     - workflow file can be loaded and parsed
     - `tracker.kind` is present and supported
-    - `tracker.api_key` is present after `$` resolution
     - `tracker.project_slug` is present when required by the tracker kind
+    - tracker auth/session status is connected and not stale
     - `codex.command` is present and non-empty
   - [x] Treat workflow/config read and YAML failures as new-dispatch blockers until fixed; do not treat prompt-template failures the same way.
   - Accepted `2026-03-21`.
@@ -174,7 +173,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
 - [x] Operators can see startup/config/load failures through the baseline logging/failure sink without attaching a debugger.
 - [x] Existing linter behavior remains intact.
 - [x] The full core workflow/config surface is represented explicitly in the typed layer, including defaults, coercion rules, path-only expansion, and pass-through Codex-owned values.
-- [x] `tracker.api_key` empty `$VAR` resolution is treated as a missing key without exposing the underlying env value.
+- [x] Interactive Linear readiness no longer depends on `tracker.api_key`, and legacy key input is ignored without exposing secret values.
 - [x] Startup validation vs per-tick dispatch preflight validation is explicit and testable rather than implied.
 - [x] Workflow/config read and YAML errors are defined as dispatch blockers until corrected.
 - [x] CLI workflow-path semantics are explicit:
@@ -191,11 +190,11 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - [x] env/path resolution
   - [x] typed error cases
   - [x] baseline startup failure surfacing
-- [x] Extend Phase 1 tests to cover:
+  - [x] Extend Phase 1 tests to cover:
   - [x] full core config field coverage and default values
   - [x] config precedence ordering
   - [x] path expansion on filesystem-path values only
-  - [x] `tracker.api_key` `$VAR` empty-string -> missing-key behavior
+  - [x] legacy `tracker.api_key` input is ignored for interactive Linear auth
   - [x] lowercase normalization and invalid-entry ignoring for `agent.max_concurrent_agents_by_state`
   - [x] CLI explicit path vs default `./WORKFLOW.md` behavior
 - [x] Run `swift test --package-path .`
@@ -347,7 +346,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - Assumptions and remaining low-severity follow-ups:
     - Existing non-directory paths at the computed workspace location now fail fast with a typed workspace error instead of being replaced.
     - Relative `workspace.root` values are normalized against the current process working directory before containment validation.
-    - Hook logging redacts the configured `tracker.api_key` when present and truncates captured hook output previews, but no broader secret-redaction policy exists yet.
+    - Hook logging no longer depends on `tracker.api_key` redaction because Linear auth is session-backed, and captured hook output previews remain truncated.
     - Sanitized workspace-key collisions still resolve to the same deterministic path because the plan and spec do not yet define a secondary disambiguation contract.
 - [x] `2.4` Implement strict prompt rendering for `issue` and `attempt`.
   - [x] Use strict variable checking.

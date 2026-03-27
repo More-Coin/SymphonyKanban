@@ -41,7 +41,6 @@ enum SymphonyWorkerAttemptTestSupport {
                     tracker: .init(
                         kind: "linear",
                         endpoint: "https://linear.example",
-                        apiKey: "token",
                         projectSlug: "proj",
                         activeStates: ["Todo", "In Progress"],
                         terminalStates: ["Done", "Canceled"]

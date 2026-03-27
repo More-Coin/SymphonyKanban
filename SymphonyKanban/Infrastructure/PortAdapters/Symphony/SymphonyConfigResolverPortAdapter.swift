@@ -22,7 +22,6 @@ public struct SymphonyConfigResolverPortAdapter: SymphonyConfigResolverPortProto
             tracker: .init(
                 kind: string(for: "kind", in: tracker),
                 endpoint: resolvedTrackerEndpoint(in: tracker),
-                apiKey: configPathModel.normalizedConfigAPIKey(string(for: "api_key", in: tracker)),
                 projectSlug: string(for: "project_slug", in: tracker),
                 activeStates: stringArray(for: "active_states", in: tracker) ?? ["Todo", "In Progress"],
                 terminalStates: stringArray(for: "terminal_states", in: tracker)

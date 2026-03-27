@@ -72,7 +72,6 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
                 kind: .afterCreate,
                 workspacePath: workspace.path,
                 timeoutMs: serviceConfig.hooks.timeoutMs,
-                trackerAPIKey: serviceConfig.tracker.apiKey,
                 fatalOnFailure: true
             )
         }
@@ -82,7 +81,6 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
             kind: .beforeRun,
             workspacePath: workspace.path,
             timeoutMs: serviceConfig.hooks.timeoutMs,
-            trackerAPIKey: serviceConfig.tracker.apiKey,
             fatalOnFailure: true
         )
 
@@ -108,8 +106,7 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
             script: serviceConfig.hooks.afterRun,
             kind: .afterRun,
             workspacePath: workspacePath,
-            timeoutMs: serviceConfig.hooks.timeoutMs,
-            trackerAPIKey: serviceConfig.tracker.apiKey
+            timeoutMs: serviceConfig.hooks.timeoutMs
         )
 
         return SymphonyRunAttemptCompletionContract(workspacePath: workspacePath)
@@ -153,8 +150,7 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
             script: serviceConfig.hooks.beforeRemove,
             kind: .beforeRemove,
             workspacePath: validatedWorkspacePath,
-            timeoutMs: serviceConfig.hooks.timeoutMs,
-            trackerAPIKey: serviceConfig.tracker.apiKey
+            timeoutMs: serviceConfig.hooks.timeoutMs
         )
 
         do {
@@ -349,7 +345,6 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
         kind: HookKind,
         workspacePath: String,
         timeoutMs: Int,
-        trackerAPIKey: String?,
         fatalOnFailure: Bool
     ) throws {
         guard let script = hookScriptModel.normalizedConfigHookScript(script) else {
@@ -370,7 +365,6 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
                 )
                 logSink(makeHookFailureLog(
                     error: infrastructureError,
-                    trackerAPIKey: trackerAPIKey,
                     output: error.output
                 ))
 
@@ -386,7 +380,6 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
             )
             logSink(makeHookFailureLog(
                 error: infrastructureError,
-                trackerAPIKey: trackerAPIKey,
                 output: nil
             ))
 
@@ -400,8 +393,7 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
         script: String?,
         kind: HookKind,
         workspacePath: String,
-        timeoutMs: Int,
-        trackerAPIKey: String?
+        timeoutMs: Int
     ) {
         do {
             try runHookIfConfigured(
@@ -409,7 +401,6 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
                 kind: kind,
                 workspacePath: workspacePath,
                 timeoutMs: timeoutMs,
-                trackerAPIKey: trackerAPIKey,
                 fatalOnFailure: false
             )
         } catch {
@@ -419,13 +410,9 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
 
     private func makeHookFailureLog(
         error: SymphonyWorkspaceInfrastructureError,
-        trackerAPIKey: String?,
         output: String?
     ) -> String {
-        let redactedOutput = redactedAndTruncatedOutput(
-            output,
-            trackerAPIKey: trackerAPIKey
-        )
+        let redactedOutput = redactedAndTruncatedOutput(output)
 
         if let redactedOutput, !redactedOutput.isEmpty {
             return "symphony.workspace.hook event=failure code=\(error.code) details=\"\(error.details ?? "")\" output=\"\(redactedOutput)\""
@@ -491,8 +478,7 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
     }
 
     private func redactedAndTruncatedOutput(
-        _ output: String?,
-        trackerAPIKey: String?
+        _ output: String?
     ) -> String? {
         guard let output = output?
             .replacingOccurrences(of: "\n", with: "\\n")
@@ -501,24 +487,14 @@ public struct SymphonyWorkspaceLifecycleGateway: SymphonyWorkspaceLifecyclePortP
             return nil
         }
 
-        let redactedOutput: String
-        if let trackerAPIKey, !trackerAPIKey.isEmpty {
-            redactedOutput = output.replacingOccurrences(
-                of: trackerAPIKey,
-                with: "[REDACTED]"
-            )
-        } else {
-            redactedOutput = output
+        guard output.count > logOutputLimit else {
+            return output
         }
 
-        guard redactedOutput.count > logOutputLimit else {
-            return redactedOutput
-        }
-
-        let endIndex = redactedOutput.index(
-            redactedOutput.startIndex,
+        let endIndex = output.index(
+            output.startIndex,
             offsetBy: logOutputLimit
         )
-        return String(redactedOutput[..<endIndex]) + "..."
+        return String(output[..<endIndex]) + "..."
     }
 }

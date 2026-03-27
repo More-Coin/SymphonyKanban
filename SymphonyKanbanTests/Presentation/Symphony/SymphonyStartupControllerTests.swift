@@ -12,7 +12,6 @@ struct SymphonyStartupControllerTests {
             ---
             tracker:
               kind: linear
-              api_key: token
               project_slug: project
             ---
             Prompt body.
@@ -46,7 +45,6 @@ struct SymphonyStartupControllerTests {
         ---
         tracker:
           kind: linear
-          api_key: token
           project_slug: project
         ---
         Prompt body.
@@ -102,15 +100,15 @@ struct SymphonyStartupControllerTests {
         #expect(
             stderrOutput.contains(
                 """
-                error_code=symphony.startup.missing_tracker_api_key \
-                reason="The workflow configuration is missing a tracker API key." \
+                error_code=symphony.startup.missing_tracker_project_identifier \
+                reason="The workflow configuration is missing the tracker project identifier." \
                 retryable=false
                 """
             )
         )
         #expect(
             !stderrOutput.contains(
-                "Set the tracker API key directly or through a non-empty environment variable indirection."
+                "Set the tracker project identifier in the workflow configuration."
             )
         )
     }

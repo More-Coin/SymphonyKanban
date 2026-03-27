@@ -2,7 +2,6 @@ import Foundation
 
 struct LinearNormalizedTrackerConfiguration {
     let endpoint: String
-    let apiKey: String
     let projectSlug: String
     let activeStates: [String]
 }
@@ -17,12 +16,6 @@ struct LinearTrackerConfigurationModel {
 
         guard trackerKind?.lowercased() == "linear" else {
             throw SymphonyIssueTrackerInfrastructureError.unsupportedTrackerKind(actualKind: trackerKind)
-        }
-
-        guard let apiKey = trackerConfiguration.apiKey?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !apiKey.isEmpty else {
-            throw SymphonyIssueTrackerInfrastructureError.missingTrackerAPIKey
         }
 
         let endpoint = trackerConfiguration.endpoint?
@@ -40,7 +33,6 @@ struct LinearTrackerConfigurationModel {
 
         return LinearNormalizedTrackerConfiguration(
             endpoint: normalizedEndpoint,
-            apiKey: apiKey,
             projectSlug: projectSlug ?? "",
             activeStates: trackerConfiguration.activeStates
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

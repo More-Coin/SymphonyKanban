@@ -4,7 +4,6 @@ public struct SymphonyServiceConfigContract: Equatable, Sendable {
     public struct Tracker: Equatable, Sendable {
         public let kind: String?
         public let endpoint: String?
-        public let apiKey: String?
         public let projectSlug: String?
         public let activeStates: [String]
         public let terminalStates: [String]

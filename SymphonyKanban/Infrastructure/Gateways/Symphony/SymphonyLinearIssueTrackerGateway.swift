@@ -22,28 +22,57 @@ public struct SymphonyLinearIssueTrackerGateway: SymphonyIssueTrackerReadPortPro
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
     private let requestExecutor: RequestExecutor
+    private let authorizationProvider: LinearIssueTrackerAuthorizationProvider
     private let configurationModel = LinearTrackerConfigurationModel()
     private let requestDefinitionModel = LinearIssueTrackerRequestDefinitionModel()
     private let requestBuilder = LinearGraphQLTransportRequestBuilder()
 
-    public init(
+    init(
         jsonDecoder: JSONDecoder = JSONDecoder(),
         jsonEncoder: JSONEncoder = JSONEncoder(),
-        requestExecutor: @escaping RequestExecutor
-    ) {
-        self.jsonDecoder = jsonDecoder
-        self.jsonEncoder = jsonEncoder
-        self.requestExecutor = requestExecutor
-    }
-
-    public init(
-        jsonDecoder: JSONDecoder = JSONDecoder(),
-        jsonEncoder: JSONEncoder = JSONEncoder()
+        requestExecutor: @escaping RequestExecutor,
+        environment: [String: String] = ProcessInfo.processInfo.environment
     ) {
         self.init(
             jsonDecoder: jsonDecoder,
             jsonEncoder: jsonEncoder,
-            requestExecutor: symphonyDefaultLinearRequestExecutor
+            requestExecutor: requestExecutor,
+            environment: environment,
+            secureStore: LinearOAuthSecureStore(),
+            oauthGateway: SymphonyLinearOAuthGateway()
+        )
+    }
+
+    init(
+        jsonDecoder: JSONDecoder,
+        jsonEncoder: JSONEncoder,
+        requestExecutor: @escaping RequestExecutor,
+        environment: [String: String],
+        secureStore: any LinearOAuthSecureStoreProtocol,
+        oauthGateway: any SymphonyTrackerOAuthPortProtocol
+    ) {
+        self.jsonDecoder = jsonDecoder
+        self.jsonEncoder = jsonEncoder
+        self.requestExecutor = requestExecutor
+        self.authorizationProvider = LinearIssueTrackerAuthorizationProvider(
+            environment: environment,
+            secureStore: secureStore,
+            oauthGateway: oauthGateway
+        )
+    }
+
+    init(
+        jsonDecoder: JSONDecoder = JSONDecoder(),
+        jsonEncoder: JSONEncoder = JSONEncoder(),
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
+        self.init(
+            jsonDecoder: jsonDecoder,
+            jsonEncoder: jsonEncoder,
+            requestExecutor: symphonyDefaultLinearRequestExecutor,
+            environment: environment,
+            secureStore: LinearOAuthSecureStore(),
+            oauthGateway: SymphonyLinearOAuthGateway()
         )
     }
 
@@ -51,12 +80,14 @@ public struct SymphonyLinearIssueTrackerGateway: SymphonyIssueTrackerReadPortPro
         using trackerConfiguration: SymphonyServiceConfigContract.Tracker
     ) async throws -> [SymphonyIssue] {
         let normalizedTracker = try configurationModel.fromContract(from: trackerConfiguration)
+        let authorizationHeader = try await authorizationProvider.authorizationHeader()
         var afterCursor: String?
         var issues: [SymphonyIssue] = []
 
         while true {
             let requestDefinition = requestDefinitionModel.makeCandidateIssuesRequestDefinition(
                 using: normalizedTracker,
+                authorizationHeader: authorizationHeader,
                 afterCursor: afterCursor
             )
             let request = try requestBuilder.makeRequest(
@@ -104,12 +135,14 @@ public struct SymphonyLinearIssueTrackerGateway: SymphonyIssueTrackerReadPortPro
         }
 
         let normalizedTracker = try configurationModel.fromContract(from: trackerConfiguration)
+        let authorizationHeader = try await authorizationProvider.authorizationHeader()
         var afterCursor: String?
         var issues: [SymphonyIssue] = []
 
         while true {
             let requestDefinition = requestDefinitionModel.makeIssuesByStatesRequestDefinition(
                 using: normalizedTracker,
+                authorizationHeader: authorizationHeader,
                 states: normalizedStates,
                 afterCursor: afterCursor
             )
@@ -161,8 +194,10 @@ public struct SymphonyLinearIssueTrackerGateway: SymphonyIssueTrackerReadPortPro
             from: trackerConfiguration,
             requireProjectSlug: false
         )
+        let authorizationHeader = try await authorizationProvider.authorizationHeader()
         let requestDefinition = requestDefinitionModel.makeIssueStatesByIDsRequestDefinition(
             using: normalizedTracker,
+            authorizationHeader: authorizationHeader,
             issueIDs: normalizedIssueIDs
         )
         let request = try requestBuilder.makeRequest(

@@ -18,12 +18,6 @@ public struct ValidateSymphonyStartupConfigurationPortAdapter:
             throw SymphonyStartupApplicationError.unsupportedTrackerKind(actualKind: trackerKind)
         }
 
-        guard let trackerAPIKey = configuration.tracker.apiKey?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !trackerAPIKey.isEmpty else {
-            throw SymphonyStartupApplicationError.missingTrackerAPIKey
-        }
-
         guard let projectSlug = configuration.tracker.projectSlug?
             .trimmingCharacters(in: .whitespacesAndNewlines),
               !projectSlug.isEmpty else {

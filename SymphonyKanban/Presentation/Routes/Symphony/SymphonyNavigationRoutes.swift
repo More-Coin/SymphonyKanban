@@ -7,27 +7,30 @@ import SwiftUI
 
 @MainActor
 public struct SymphonyNavigationRoutes: View {
-    private let dashboardController: SymphonyDashboardController
     private let issueDetailController: SymphonyIssueDetailController
-    private let refreshController: SymphonyRefreshController
+    private let authController: SymphonyAuthController
+    private let launchTrackerAuthorizationURL: @MainActor (URL) throws -> Void
+    @Binding private var pendingTrackerAuthCallbackURL: URL?
 
     @State private var selectedTab: SymphonyTabViewModel = .board
     @State private var selectedIssueIdentifier: String?
     @State private var showInspector = false
     @State private var showAuthSheet = false
     @State private var isRefreshing = false
-    @State private var isLinearConnected = false
+    @State private var authViewModel = SymphonyAuthView.mockViewModel
     @State private var isCodexConnected = false
 
     public init(
-        dashboardController: SymphonyDashboardController,
         issueDetailController: SymphonyIssueDetailController,
-        refreshController: SymphonyRefreshController,
+        authController: SymphonyAuthController,
+        pendingTrackerAuthCallbackURL: Binding<URL?> = .constant(nil),
+        launchTrackerAuthorizationURL: @escaping @MainActor (URL) throws -> Void = { _ in },
         initialSelectedIssueIdentifier: String? = nil
     ) {
-        self.dashboardController = dashboardController
         self.issueDetailController = issueDetailController
-        self.refreshController = refreshController
+        self.authController = authController
+        self._pendingTrackerAuthCallbackURL = pendingTrackerAuthCallbackURL
+        self.launchTrackerAuthorizationURL = launchTrackerAuthorizationURL
         _selectedIssueIdentifier = State(initialValue: initialSelectedIssueIdentifier)
     }
 
@@ -35,7 +38,7 @@ public struct SymphonyNavigationRoutes: View {
         NavigationSplitView {
             SymphonySidebarView(
                 selectedTab: $selectedTab,
-                isLinearConnected: isLinearConnected,
+                isLinearConnected: authViewModel.linearService?.isConnected == true,
                 isCodexConnected: isCodexConnected,
                 onIntegrationTapped: handleIntegrationTapped
             )
@@ -65,8 +68,30 @@ public struct SymphonyNavigationRoutes: View {
                 showInspector = newValue != nil
             }
         }
+        .task {
+            await refreshAuthViewModel()
+        }
+        .onChange(of: pendingTrackerAuthCallbackURL) { _, newValue in
+            guard let callbackURL = newValue else {
+                return
+            }
+
+            Task {
+                authViewModel = await authController.completeAuthorizationViewModel(
+                    from: callbackURL
+                )
+                if authViewModel.linearService?.isConnected == true {
+                    showAuthSheet = false
+                }
+                pendingTrackerAuthCallbackURL = nil
+            }
+        }
         .sheet(isPresented: $showAuthSheet) {
-            SymphonyAuthView()
+            SymphonyAuthView(
+                viewModel: authViewModel,
+                onConnect: handleAuthConnect,
+                onDisconnect: handleAuthDisconnect
+            )
                 .frame(minWidth: 520, minHeight: 480)
         }
     }
@@ -90,6 +115,9 @@ public struct SymphonyNavigationRoutes: View {
         withAnimation(SymphonyDesignStyle.Motion.smooth) {
             showAuthSheet = true
         }
+        Task {
+            await refreshAuthViewModel()
+        }
     }
 
     private func handleRefresh() {
@@ -100,17 +128,47 @@ public struct SymphonyNavigationRoutes: View {
             }
         }
     }
+
+    private func handleAuthConnect(
+        _ service: SymphonyAuthServiceViewModel
+    ) {
+        Task {
+            do {
+                let result = try await authController.startAuthorization()
+                guard let url = URL(string: result.browserLaunchURL) else {
+                    authViewModel = authController.errorViewModel(
+                        for: SymphonyTrackerAuthPresentationError.invalidAuthorizationURL
+                    )
+                    return
+                }
+
+                authViewModel = await authController.viewModelAfterStartingAuthorization()
+                try launchTrackerAuthorizationURL(url)
+            } catch {
+                authViewModel = authController.errorViewModel(for: error)
+            }
+        }
+    }
+
+    private func handleAuthDisconnect(
+        _ service: SymphonyAuthServiceViewModel
+    ) {
+        Task {
+            authViewModel = await authController.disconnectViewModel()
+        }
+    }
+
+    private func refreshAuthViewModel() async {
+        authViewModel = await authController.queryViewModel()
+    }
 }
 
 #Preview {
     SymphonyNavigationRoutes(
-        dashboardController: SymphonyDashboardController(
-            runtimeQueryService: SymphonyUIDI.makeRuntimeQueryService()
-        ),
         issueDetailController: SymphonyIssueDetailController(
             runtimeQueryService: SymphonyUIDI.makeRuntimeQueryService()
         ),
-        refreshController: SymphonyRefreshController(),
+        authController: SymphonyUIDI.makeAuthController(),
         initialSelectedIssueIdentifier: "KAN-142"
     )
     .frame(width: 1200, height: 800)

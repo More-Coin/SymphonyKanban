@@ -131,7 +131,7 @@ struct SymphonyOrchestratorWorkflowReloadTests {
         workflowLoader.setDefinition(reloadedConfiguration.workflowDefinition)
         configResolver.setServiceConfig(reloadedConfiguration.serviceConfig)
         validator.setError(
-            SymphonyStartupApplicationError.missingTrackerAPIKey
+            SymphonyStartupApplicationError.trackerAuthNotConnected(trackerKind: "linear")
         )
         await reloadMonitor.fireChange()
 

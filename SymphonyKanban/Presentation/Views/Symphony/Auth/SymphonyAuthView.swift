@@ -1,20 +1,26 @@
 import SwiftUI
 
-// MARK: - SymphonyAuthView
-/// Login/connection view for Linear and Codex integrations.
-/// Displays service cards with connect/disconnect actions and stub API key fields.
-
 public struct SymphonyAuthView: View {
-    @State private var viewModel = SymphonyAuthView.mockViewModel
+    private let viewModel: SymphonyAuthViewModel
+    private let onConnect: (SymphonyAuthServiceViewModel) -> Void
+    private let onDisconnect: (SymphonyAuthServiceViewModel) -> Void
     @State private var appeared = false
-    @State private var tokenInputs: [String: String] = [:]
 
-    public init() {}
+    public init(
+        viewModel: SymphonyAuthViewModel,
+        onConnect: @escaping (SymphonyAuthServiceViewModel) -> Void = { _ in },
+        onDisconnect: @escaping (SymphonyAuthServiceViewModel) -> Void = { _ in }
+    ) {
+        self.viewModel = viewModel
+        self.onConnect = onConnect
+        self.onDisconnect = onDisconnect
+    }
 
     public var body: some View {
         ScrollView {
             VStack(spacing: SymphonyDesignStyle.Spacing.xxl) {
                 header
+                banner
                 serviceCards
             }
             .frame(maxWidth: 500)
@@ -38,17 +44,44 @@ public struct SymphonyAuthView: View {
                 .foregroundStyle(SymphonyDesignStyle.Accent.blue)
                 .padding(.bottom, SymphonyDesignStyle.Spacing.sm)
 
-            Text("Connect Your Services")
+            Text(viewModel.title)
                 .font(SymphonyDesignStyle.Typography.largeTitle)
                 .foregroundStyle(SymphonyDesignStyle.Text.primary)
 
-            Text("Link your project management and code execution tools to enable Symphony's agent-driven workflow.")
+            Text(viewModel.subtitle)
                 .font(SymphonyDesignStyle.Typography.body)
                 .foregroundStyle(SymphonyDesignStyle.Text.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 400)
         }
         .symphonyStaggerIn(index: 0, isVisible: appeared)
+    }
+
+    private var banner: some View {
+        Group {
+            if let bannerMessage = viewModel.bannerMessage {
+                HStack(spacing: SymphonyDesignStyle.Spacing.sm) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(SymphonyDesignStyle.Accent.coral)
+
+                    Text(bannerMessage)
+                        .font(SymphonyDesignStyle.Typography.caption)
+                        .foregroundStyle(SymphonyDesignStyle.Text.secondary)
+
+                    Spacer()
+                }
+                .padding(SymphonyDesignStyle.Spacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: SymphonyDesignStyle.Radius.md, style: .continuous)
+                        .fill(SymphonyDesignStyle.Accent.coral.opacity(0.10))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: SymphonyDesignStyle.Radius.md, style: .continuous)
+                        .strokeBorder(SymphonyDesignStyle.Accent.coral.opacity(0.18), lineWidth: 0.5)
+                )
+                .symphonyStaggerIn(index: 1, isVisible: appeared)
+            }
+        }
     }
 
     // MARK: - Service Cards
@@ -86,9 +119,7 @@ public struct SymphonyAuthView: View {
                     Text(service.statusLabel)
                         .font(SymphonyDesignStyle.Typography.caption)
                         .foregroundStyle(
-                            service.isConnected
-                                ? SymphonyDesignStyle.Accent.green
-                                : SymphonyDesignStyle.Text.tertiary
+                            statusColor(for: service)
                         )
                 }
 
@@ -97,9 +128,7 @@ public struct SymphonyAuthView: View {
                 // Connection status dot
                 Circle()
                     .fill(
-                        service.isConnected
-                            ? SymphonyDesignStyle.Accent.green
-                            : SymphonyDesignStyle.Text.tertiary
+                        statusColor(for: service)
                     )
                     .frame(width: 10, height: 10)
             }
@@ -111,12 +140,7 @@ public struct SymphonyAuthView: View {
 
             SymphonyDividerView()
 
-            // API Key Input or Last Sync
-            if service.isConnected {
-                connectedInfo(service)
-            } else {
-                disconnectedForm(service)
-            }
+            serviceStateInfo(service)
 
             // Action Button
             actionButton(service)
@@ -129,13 +153,25 @@ public struct SymphonyAuthView: View {
 
     private func connectedInfo(_ service: SymphonyAuthServiceViewModel) -> some View {
         VStack(alignment: .leading, spacing: SymphonyDesignStyle.Spacing.sm) {
-            if let syncTime = service.lastSyncTime {
+            if let connectedAtLabel = service.connectedAtLabel {
                 HStack(spacing: SymphonyDesignStyle.Spacing.sm) {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 12))
                         .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
 
-                    Text("Last synced \(syncTime)")
+                    Text(connectedAtLabel)
+                        .font(SymphonyDesignStyle.Typography.caption)
+                        .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
+                }
+            }
+
+            if let expiresAtLabel = service.expiresAtLabel {
+                HStack(spacing: SymphonyDesignStyle.Spacing.sm) {
+                    Image(systemName: "hourglass")
+                        .font(.system(size: 12))
+                        .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
+
+                    Text(expiresAtLabel)
                         .font(SymphonyDesignStyle.Typography.caption)
                         .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
                 }
@@ -146,44 +182,47 @@ public struct SymphonyAuthView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(SymphonyDesignStyle.Accent.green)
 
-                Text("Authorized and active")
+                Text(service.statusMessage)
                     .font(SymphonyDesignStyle.Typography.caption)
                     .foregroundStyle(SymphonyDesignStyle.Text.secondary)
             }
         }
     }
 
-    // MARK: - Disconnected Form
+    private func serviceStateInfo(_ service: SymphonyAuthServiceViewModel) -> some View {
+        if service.isConnected {
+            return AnyView(connectedInfo(service))
+        }
 
-    private func disconnectedForm(_ service: SymphonyAuthServiceViewModel) -> some View {
+        return AnyView(disconnectedInfo(service))
+    }
+
+    private func disconnectedInfo(_ service: SymphonyAuthServiceViewModel) -> some View {
         VStack(alignment: .leading, spacing: SymphonyDesignStyle.Spacing.md) {
-            Text("API Token")
-                .font(SymphonyDesignStyle.Typography.caption)
-                .foregroundStyle(SymphonyDesignStyle.Text.secondary)
-
-            SecureField("Enter your \(service.name) API token", text: tokenBinding(for: service.id))
-                .textFieldStyle(.plain)
+            Text(service.statusMessage)
                 .font(SymphonyDesignStyle.Typography.body)
-                .foregroundStyle(SymphonyDesignStyle.Text.primary)
-                .padding(.horizontal, SymphonyDesignStyle.Spacing.md)
-                .padding(.vertical, SymphonyDesignStyle.Spacing.sm)
-                .background(
-                    RoundedRectangle(cornerRadius: SymphonyDesignStyle.Radius.sm, style: .continuous)
-                        .fill(SymphonyDesignStyle.Background.primary)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: SymphonyDesignStyle.Radius.sm, style: .continuous)
-                        .strokeBorder(SymphonyDesignStyle.Border.default, lineWidth: 0.5)
-                )
+                .foregroundStyle(SymphonyDesignStyle.Text.secondary)
 
             HStack(spacing: SymphonyDesignStyle.Spacing.xs) {
                 Image(systemName: "arrow.up.right.square")
                     .font(.system(size: 10))
                     .foregroundStyle(SymphonyDesignStyle.Accent.blue)
 
-                Text("You'll be redirected to \(service.name) to authorize")
+                Text(redirectHint(for: service))
                     .font(SymphonyDesignStyle.Typography.micro)
                     .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
+            }
+
+            if let expiresAtLabel = service.expiresAtLabel {
+                HStack(spacing: SymphonyDesignStyle.Spacing.xs) {
+                    Image(systemName: "clock.badge.exclamationmark")
+                        .font(.system(size: 10))
+                        .foregroundStyle(SymphonyDesignStyle.Accent.coral)
+
+                    Text(expiresAtLabel)
+                        .font(SymphonyDesignStyle.Typography.micro)
+                        .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
+                }
             }
         }
     }
@@ -193,8 +232,14 @@ public struct SymphonyAuthView: View {
     private func actionButton(_ service: SymphonyAuthServiceViewModel) -> some View {
         HStack {
             Spacer()
-            Button {} label: {
-                Text(service.isConnected ? "Disconnect" : "Connect")
+            Button {
+                if service.isConnected {
+                    onDisconnect(service)
+                } else {
+                    onConnect(service)
+                }
+            } label: {
+                Text(service.actionLabel)
                     .font(SymphonyDesignStyle.Typography.callout)
                     .fontWeight(.semibold)
                     .foregroundStyle(
@@ -223,48 +268,69 @@ public struct SymphonyAuthView: View {
                     )
             }
             .buttonStyle(.plain)
+            .disabled(service.isActionEnabled == false)
+            .opacity(service.isActionEnabled ? 1 : 0.65)
         }
     }
 
-    // MARK: - Helpers
+    private func statusColor(
+        for service: SymphonyAuthServiceViewModel
+    ) -> Color {
+        switch service.state {
+        case .connected:
+            return SymphonyDesignStyle.Accent.green
+        case .staleSession:
+            return SymphonyDesignStyle.Accent.coral
+        case .connecting:
+            return SymphonyDesignStyle.Accent.blue
+        case .disconnected:
+            return SymphonyDesignStyle.Text.tertiary
+        }
+    }
 
-    private func tokenBinding(for serviceID: String) -> Binding<String> {
-        Binding(
-            get: { tokenInputs[serviceID] ?? "" },
-            set: { tokenInputs[serviceID] = $0 }
-        )
+    private func redirectHint(
+        for service: SymphonyAuthServiceViewModel
+    ) -> String {
+        switch service.state {
+        case .connecting:
+            return "Finish the redirect flow in your browser, then return to Symphony."
+        case .staleSession:
+            return "Reconnect in the browser to replace the stored session."
+        case .disconnected:
+            return "Connect opens \(service.name) in your browser and completes through the configured callback."
+        case .connected:
+            return ""
+        }
     }
 }
 
-// MARK: - Mock Data
-
 extension SymphonyAuthView {
     static var mockViewModel: SymphonyAuthViewModel {
-        SymphonyAuthViewModel(services: [
+        SymphonyAuthViewModel(
+            title: "Linear Connection",
+            subtitle: "Authorize Linear in your browser and let Symphony manage the callback.",
+            services: [
             SymphonyAuthServiceViewModel(
                 id: "linear",
                 name: "Linear",
                 icon: "rectangle.3.group",
-                description: "Connect to Linear to sync issues, track status changes, and enable agent-driven triage across your projects.",
-                isConnected: true,
+                description: "Connect Linear to sync issues and keep Symphony's issue reads on OAuth-backed bearer auth.",
+                state: .connected,
                 statusLabel: "Connected",
-                lastSyncTime: "2 minutes ago"
-            ),
-            SymphonyAuthServiceViewModel(
-                id: "codex",
-                name: "Codex",
-                icon: "terminal",
-                description: "Connect to Codex to enable AI agent code execution, automated builds, and real-time session monitoring.",
-                isConnected: false,
-                statusLabel: "Not connected",
-                lastSyncTime: nil
+                statusMessage: "Connected to Linear.",
+                actionLabel: "Disconnect",
+                connectedAtLabel: "Connected 2 minutes ago",
+                expiresAtLabel: nil,
+                accountLabel: nil,
+                isActionEnabled: true
             )
-        ])
+        ]
+        )
     }
 }
 
 #Preview {
-    SymphonyAuthView()
+    SymphonyAuthView(viewModel: SymphonyAuthView.mockViewModel)
         .frame(width: 600, height: 800)
         .background(SymphonyDesignStyle.Background.primary)
 }
