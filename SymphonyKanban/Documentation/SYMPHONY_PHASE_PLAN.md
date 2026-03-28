@@ -536,7 +536,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
     - The typed turn sandbox contract currently models the accepted `workspaceWrite` posture with writable roots and `networkAccess`, while any broader object-form sandbox fields remain deferred until a later subphase proves they are needed by the targeted app-server version.
     - Policy incompatibility is now an explicit normalized runner failure category, and `turn_input_required` is preserved as a separate hard-failure category rather than a generic response error.
 - [x] `3.3` Implement the concrete app-server gateway.
-  - [x] `bash -lc <codex.command>`
+  - [x] resolve the first `codex.command` token via login-shell `command -v`, then invoke `bash -lc <effective resolved command>`
   - [x] stdout line buffering
   - [x] stderr diagnostics
   - [x] startup handshake
@@ -1108,7 +1108,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - workspace manager plus hooks plus safety: deterministic sanitized workspace paths, create/reuse/non-directory handling, temp-artifact cleanup, exact hook order/timeouts/failure semantics, root containment, and `cwd == workspace_path` enforcement
   - issue tracker client: the three required read operations, Linear `slugId` project filtering, auth header/default endpoint, ordered pagination, minimal state-refresh reads, and typed tracker error mapping
   - orchestrator dispatch/reconciliation/retry: single mutable state owner, explicit eligibility/sorting/concurrency rules, retry queue shape, continuation vs failure backoff, stall detection, reconciliation outcomes, and restart recovery
-  - coding-agent app-server client: `bash -lc <codex.command>`, required handshake order, stdout-only JSON line parsing, session ID emission, continuation turns on one thread, documented approval/sandbox/user-input behavior, and normalized runner error mapping
+  - coding-agent app-server client: login-shell executable resolution for `codex.command`, `bash -lc <effective resolved command>`, required handshake order, stdout-only JSON line parsing, session ID emission, continuation turns on one thread, documented approval/sandbox/user-input behavior, and normalized runner error mapping
   - structured logs and operator-visible observability: `issue_id`, `issue_identifier`, `session_id`, stable `key=value` phrasing, startup/validation/dispatch/reload/runner failure visibility, sink-failure survival, and accurate token/rate-limit aggregation
   - CLI and host lifecycle: optional positional workflow path, default `./WORKFLOW.md`, clean startup failure surfacing, success exit on normal start/shutdown, and nonzero exit on startup failure or abnormal host exit
 - Optional extensions remain explicitly outside core conformance unless separately prioritized:

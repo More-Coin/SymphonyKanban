@@ -4,6 +4,7 @@ public protocol SymphonyCodexRequestFactoryPortProtocol {
         issue: SymphonyIssue,
         prompt: String,
         workspacePath: String,
+        command: String,
         using serviceConfig: SymphonyServiceConfigContract
     ) -> SymphonyCodexSessionStartupContract
 

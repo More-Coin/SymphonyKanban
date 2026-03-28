@@ -9,6 +9,7 @@ import SwiftUI
 public struct SymphonyNavigationRoutes: View {
     private let issueDetailController: SymphonyIssueDetailController
     private let authController: SymphonyAuthController
+    private let codexConnectionController: SymphonyCodexConnectionController
     private let launchTrackerAuthorizationURL: @MainActor (URL) throws -> Void
     private let prepareTrackerAuthorizationCallbackListener: @MainActor () async throws -> Void
     private let awaitTrackerAuthorizationCallback: @MainActor () async throws -> SymphonyTrackerAuthCallbackContract
@@ -18,13 +19,20 @@ public struct SymphonyNavigationRoutes: View {
     @State private var selectedIssueIdentifier: String?
     @State private var showInspector = false
     @State private var showAuthSheet = false
+    @State private var showCodexStatusAlert = false
     @State private var isRefreshing = false
     @State private var authViewModel = SymphonyAuthView.mockViewModel
     @State private var isCodexConnected = false
+    @State private var codexConnectionViewModel = SymphonyCodexConnectionViewModel(
+        isConnected: false,
+        title: "Codex Login Required",
+        message: "Codex verification has not run yet."
+    )
 
     public init(
         issueDetailController: SymphonyIssueDetailController,
         authController: SymphonyAuthController,
+        codexConnectionController: SymphonyCodexConnectionController,
         launchTrackerAuthorizationURL: @escaping @MainActor (URL) throws -> Void = { _ in },
         prepareTrackerAuthorizationCallbackListener: @escaping @MainActor () async throws -> Void = {},
         awaitTrackerAuthorizationCallback: @escaping @MainActor () async throws -> SymphonyTrackerAuthCallbackContract = {
@@ -37,6 +45,7 @@ public struct SymphonyNavigationRoutes: View {
     ) {
         self.issueDetailController = issueDetailController
         self.authController = authController
+        self.codexConnectionController = codexConnectionController
         self.launchTrackerAuthorizationURL = launchTrackerAuthorizationURL
         self.prepareTrackerAuthorizationCallbackListener = prepareTrackerAuthorizationCallbackListener
         self.awaitTrackerAuthorizationCallback = awaitTrackerAuthorizationCallback
@@ -79,15 +88,24 @@ public struct SymphonyNavigationRoutes: View {
             }
         }
         .task {
-            await refreshAuthViewModel()
+            await refreshConnectionState()
         }
         .sheet(isPresented: $showAuthSheet) {
             SymphonyAuthView(
                 viewModel: authViewModel,
                 onConnect: handleAuthConnect,
-                onDisconnect: handleAuthDisconnect
+                onDisconnect: handleAuthDisconnect,
+                onDismiss: { showAuthSheet = false }
             )
                 .frame(minWidth: 520, minHeight: 480)
+        }
+        .alert(
+            codexConnectionViewModel.title,
+            isPresented: $showCodexStatusAlert
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(codexConnectionViewModel.message)
         }
     }
 
@@ -107,11 +125,19 @@ public struct SymphonyNavigationRoutes: View {
     }
 
     private func handleIntegrationTapped(_ service: String) {
-        withAnimation(SymphonyDesignStyle.Motion.smooth) {
-            showAuthSheet = true
-        }
-        Task {
-            await refreshAuthViewModel()
+        switch service.lowercased() {
+        case "codex":
+            Task {
+                await refreshCodexConnectionViewModel()
+                showCodexStatusAlert = true
+            }
+        default:
+            withAnimation(SymphonyDesignStyle.Motion.smooth) {
+                showAuthSheet = true
+            }
+            Task {
+                await refreshAuthViewModel()
+            }
         }
     }
 
@@ -164,6 +190,17 @@ public struct SymphonyNavigationRoutes: View {
     private func refreshAuthViewModel() async {
         authViewModel = await authController.queryViewModel()
     }
+
+    private func refreshCodexConnectionViewModel() async {
+        let viewModel = codexConnectionController.queryViewModel()
+        codexConnectionViewModel = viewModel
+        isCodexConnected = viewModel.isConnected
+    }
+
+    private func refreshConnectionState() async {
+        await refreshAuthViewModel()
+        await refreshCodexConnectionViewModel()
+    }
 }
 
 #Preview {
@@ -172,6 +209,7 @@ public struct SymphonyNavigationRoutes: View {
             runtimeQueryService: SymphonyUIDI.makeRuntimeQueryService()
         ),
         authController: SymphonyUIDI.makeAuthController(),
+        codexConnectionController: SymphonyUIDI.makeCodexConnectionController(),
         initialSelectedIssueIdentifier: "KAN-142"
     )
     .frame(width: 1200, height: 800)

@@ -7,7 +7,8 @@ enum SymphonyWorkerAttemptTestSupport {
         trackerPort: WorkerAttemptIssueTrackerReadSpy = WorkerAttemptIssueTrackerReadSpy(),
         promptRenderer: WorkerAttemptPromptRendererSpy = WorkerAttemptPromptRendererSpy(renderedPrompt: "Rendered full prompt"),
         runner: WorkerAttemptRunnerSpy = WorkerAttemptRunnerSpy(),
-        logSink: WorkerAttemptLogSinkSpy = WorkerAttemptLogSinkSpy()
+        logSink: WorkerAttemptLogSinkSpy = WorkerAttemptLogSinkSpy(),
+        codexCommandResolverPort: WorkerAttemptCodexCommandResolverSpy = WorkerAttemptCodexCommandResolverSpy()
     ) -> SymphonyWorkerAttemptService {
         SymphonyWorkerAttemptService(
             prepareWorkspaceUseCase: PrepareSymphonyWorkspaceUseCase(workspaceLifecyclePort: workspacePort),
@@ -16,6 +17,9 @@ enum SymphonyWorkerAttemptTestSupport {
             cancelActiveTurnUseCase: CancelSymphonyActiveTurnUseCase(runnerPort: runner),
             renderPromptUseCase: RenderSymphonyPromptUseCase(promptRendererPort: promptRenderer),
             fetchIssuesUseCase: FetchSymphonyIssuesUseCase(issueTrackerReadPort: trackerPort),
+            resolveCodexCommandUseCase: ResolveSymphonyCodexCommandUseCase(
+                codexCommandResolverPort: codexCommandResolverPort
+            ),
             requestFactoryPort: SymphonyCodexRequestFactoryPortAdapter(),
             runnerPort: runner,
             telemetryPort: SymphonyWorkerAttemptTelemetryPortAdapter(logSink: logSink),
@@ -369,6 +373,42 @@ final class WorkerAttemptRunnerSpy: @unchecked Sendable, SymphonyCodexRunnerPort
                 }
             }
         }
+    }
+}
+
+final class WorkerAttemptCodexCommandResolverSpy: @unchecked Sendable, SymphonyCodexCommandResolverPortProtocol {
+    private let resolution: SymphonyCodexCommandResolutionContract
+    private let lock = NSLock()
+    private(set) var recordedCurrentWorkingDirectoryPaths: [String] = []
+    private(set) var recordedExplicitWorkflowPaths: [String?] = []
+
+    init(
+        resolution: SymphonyCodexCommandResolutionContract = SymphonyCodexCommandResolutionContract(
+            configuredCommand: "codex app-server",
+            effectiveCommand: "/opt/homebrew/bin/codex app-server",
+            executableName: "codex",
+            executablePath: "/opt/homebrew/bin/codex",
+            detailMessage: nil
+        )
+    ) {
+        self.resolution = resolution
+    }
+
+    func resolveCodexCommand(
+        currentWorkingDirectoryPath: String,
+        explicitWorkflowPath: String?
+    ) -> SymphonyCodexCommandResolutionContract {
+        lock.lock()
+        recordedCurrentWorkingDirectoryPaths.append(currentWorkingDirectoryPath)
+        recordedExplicitWorkflowPaths.append(explicitWorkflowPath)
+        lock.unlock()
+        return resolution
+    }
+
+    func calls() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return recordedCurrentWorkingDirectoryPaths.count
     }
 }
 

@@ -4,16 +4,19 @@ public struct SymphonyAuthView: View {
     private let viewModel: SymphonyAuthViewModel
     private let onConnect: (SymphonyAuthServiceViewModel) -> Void
     private let onDisconnect: (SymphonyAuthServiceViewModel) -> Void
+    private let onDismiss: (() -> Void)?
     @State private var appeared = false
 
     public init(
         viewModel: SymphonyAuthViewModel,
         onConnect: @escaping (SymphonyAuthServiceViewModel) -> Void = { _ in },
-        onDisconnect: @escaping (SymphonyAuthServiceViewModel) -> Void = { _ in }
+        onDisconnect: @escaping (SymphonyAuthServiceViewModel) -> Void = { _ in },
+        onDismiss: (() -> Void)? = nil
     ) {
         self.viewModel = viewModel
         self.onConnect = onConnect
         self.onDisconnect = onDisconnect
+        self.onDismiss = onDismiss
     }
 
     public var body: some View {
@@ -27,6 +30,24 @@ public struct SymphonyAuthView: View {
             .padding(SymphonyDesignStyle.Spacing.xxxl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .topTrailing) {
+            if let onDismiss {
+                Button {
+                    onDismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(SymphonyDesignStyle.Text.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(SymphonyDesignStyle.Text.secondary.opacity(0.10))
+                        )
+                }
+                .buttonStyle(.plain)
+                .padding(SymphonyDesignStyle.Spacing.lg)
+            }
+        }
         .background(SymphonyDesignStyle.Background.secondary)
         .onAppear {
             withAnimation(SymphonyDesignStyle.Motion.gentle) {

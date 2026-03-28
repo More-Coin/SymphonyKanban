@@ -16,6 +16,7 @@ public enum SymphonyUIDI {
             authController: makeAuthController(
                 environment: environment
             ),
+            codexConnectionController: makeCodexConnectionController(),
             launchTrackerAuthorizationURL: { url in
                 browserRuntime.open(url)
             },
@@ -65,6 +66,20 @@ public enum SymphonyUIDI {
                 ),
                 disconnectTrackerAuthUseCase: DisconnectSymphonyTrackerUseCase(
                     trackerAuthPort: authPortAdapter
+                )
+            )
+        )
+    }
+
+    public static func makeCodexConnectionController() -> SymphonyCodexConnectionController {
+        let codexCommandResolverPort = SymphonyCodexCommandResolverPortAdapter()
+        return SymphonyCodexConnectionController(
+            codexConnectionService: SymphonyCodexConnectionService(
+                resolveCodexCommandUseCase: ResolveSymphonyCodexCommandUseCase(
+                    codexCommandResolverPort: codexCommandResolverPort
+                ),
+                queryCodexConnectionStatusUseCase: QuerySymphonyCodexConnectionStatusUseCase(
+                    codexConnectionPort: SymphonyCodexConnectionGateway()
                 )
             )
         )

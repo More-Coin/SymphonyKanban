@@ -20,6 +20,7 @@ public struct SymphonyCodexRequestFactoryPortAdapter: SymphonyCodexRequestFactor
         issue: SymphonyIssue,
         prompt: String,
         workspacePath: String,
+        command: String,
         using serviceConfig: SymphonyServiceConfigContract
     ) -> SymphonyCodexSessionStartupContract {
         let normalizedConfiguration = configurationModel.fromContract(
@@ -54,7 +55,7 @@ public struct SymphonyCodexRequestFactoryPortAdapter: SymphonyCodexRequestFactor
                 sandboxPolicy: normalizedConfiguration.turnSandboxPolicy
             ),
             approvalPosture: approvalPosture,
-            command: serviceConfig.codex.command,
+            command: command,
             readTimeoutMs: serviceConfig.codex.readTimeoutMs,
             turnTimeoutMs: serviceConfig.codex.turnTimeoutMs
         )

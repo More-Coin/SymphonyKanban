@@ -46,6 +46,7 @@ public final class SymphonyWorkerAttemptService: @unchecked Sendable {
     private let cancelActiveTurnUseCase: CancelSymphonyActiveTurnUseCase
     private let renderPromptUseCase: RenderSymphonyPromptUseCase
     private let fetchIssuesUseCase: FetchSymphonyIssuesUseCase
+    private let resolveCodexCommandUseCase: ResolveSymphonyCodexCommandUseCase
     private let requestFactoryPort: any SymphonyCodexRequestFactoryPortProtocol
     private let runnerPort: any SymphonyCodexRunnerPortProtocol
     private let telemetryPort: any SymphonyWorkerAttemptTelemetryPortProtocol
@@ -61,6 +62,7 @@ public final class SymphonyWorkerAttemptService: @unchecked Sendable {
         cancelActiveTurnUseCase: CancelSymphonyActiveTurnUseCase,
         renderPromptUseCase: RenderSymphonyPromptUseCase,
         fetchIssuesUseCase: FetchSymphonyIssuesUseCase,
+        resolveCodexCommandUseCase: ResolveSymphonyCodexCommandUseCase,
         requestFactoryPort: any SymphonyCodexRequestFactoryPortProtocol,
         runnerPort: any SymphonyCodexRunnerPortProtocol,
         telemetryPort: any SymphonyWorkerAttemptTelemetryPortProtocol,
@@ -72,6 +74,7 @@ public final class SymphonyWorkerAttemptService: @unchecked Sendable {
         self.cancelActiveTurnUseCase = cancelActiveTurnUseCase
         self.renderPromptUseCase = renderPromptUseCase
         self.fetchIssuesUseCase = fetchIssuesUseCase
+        self.resolveCodexCommandUseCase = resolveCodexCommandUseCase
         self.requestFactoryPort = requestFactoryPort
         self.telemetryPort = telemetryPort
         self.dateProvider = dateProvider
@@ -138,6 +141,10 @@ public final class SymphonyWorkerAttemptService: @unchecked Sendable {
                         attempt: request.attempt
                     )
                 ).prompt
+                let commandResolution = resolveCodexCommandUseCase.execute(
+                    currentWorkingDirectoryPath: launchContext.workspacePath,
+                    explicitWorkflowPath: configuration.workflowDefinition.resolvedPath
+                )
 
                 let firstTurnCount = 1
                 let firstResult = try await runnerPort.startSession(
@@ -145,6 +152,7 @@ public final class SymphonyWorkerAttemptService: @unchecked Sendable {
                         issue: issue,
                         prompt: firstPrompt,
                         workspacePath: launchContext.workspacePath,
+                        command: commandResolution.effectiveCommand,
                         using: configuration.serviceConfig
                     ),
                     onEvent: { [recorder] event in

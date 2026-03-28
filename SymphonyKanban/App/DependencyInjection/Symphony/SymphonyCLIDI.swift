@@ -24,6 +24,7 @@ struct SymphonyCLIDI {
             )
             let workspaceGateway = SymphonyWorkspaceLifecycleGateway()
             let runnerGateway = SymphonyCodexRunnerGateway()
+            let codexCommandResolverPort = SymphonyCodexCommandResolverPortAdapter()
             return SymphonyWorkerAttemptService(
                 prepareWorkspaceUseCase: PrepareSymphonyWorkspaceUseCase(
                     workspaceLifecyclePort: workspaceGateway
@@ -42,6 +43,9 @@ struct SymphonyCLIDI {
                 ),
                 fetchIssuesUseCase: FetchSymphonyIssuesUseCase(
                     issueTrackerReadPort: issueTrackerGateway
+                ),
+                resolveCodexCommandUseCase: ResolveSymphonyCodexCommandUseCase(
+                    codexCommandResolverPort: codexCommandResolverPort
                 ),
                 requestFactoryPort: SymphonyCodexRequestFactoryPortAdapter(),
                 runnerPort: runnerGateway,

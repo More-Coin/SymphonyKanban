@@ -11,6 +11,92 @@ struct SymphonyCodexLaunchConfigurationModel: Equatable, Sendable {
     let currentWorkingDirectoryPath: String
 }
 
+struct SymphonyCodexCommandLineModel: Equatable, Sendable {
+    private enum Defaults {
+        static let shellPath = "/bin/zsh"
+    }
+
+    let configuredCommand: String
+    let executableToken: String
+    let executableName: String
+    let shellPath: String
+    let shellLookupCommand: String
+
+    init(
+        configuredCommand: String,
+        shellPath: String?
+    ) {
+        let normalizedConfiguredCommand = configuredCommand.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedExecutableToken = normalizedConfiguredCommand
+            .split(whereSeparator: \.isWhitespace)
+            .first
+            .map(String.init) ?? "codex"
+
+        self.configuredCommand = normalizedConfiguredCommand
+        self.executableToken = normalizedExecutableToken
+        self.executableName = URL(fileURLWithPath: normalizedExecutableToken).lastPathComponent
+        self.shellPath = Self.normalizedShellPath(from: shellPath)
+        self.shellLookupCommand = "command -v \(Self.shellQuoted(normalizedExecutableToken))"
+    }
+
+    var absoluteExecutablePath: String? {
+        executableToken.hasPrefix("/") ? executableToken : nil
+    }
+
+    func reconstructedCommand(
+        with executablePath: String
+    ) -> String {
+        guard let range = configuredCommand.rangeOfCharacter(from: .whitespacesAndNewlines) else {
+            return executablePath
+        }
+
+        let suffix = String(configuredCommand[range.lowerBound...])
+        return executablePath + suffix
+    }
+
+    func normalizedResolvedExecutablePath(
+        from rawPath: String,
+        currentWorkingDirectoryPath: String
+    ) -> String? {
+        guard rawPath.isEmpty == false else {
+            return nil
+        }
+
+        if rawPath.hasPrefix("/") {
+            return rawPath
+        }
+
+        guard rawPath.contains("/") else {
+            return nil
+        }
+
+        return URL(
+            fileURLWithPath: currentWorkingDirectoryPath,
+            isDirectory: true
+        )
+        .appendingPathComponent(rawPath)
+        .standardizedFileURL
+        .path
+    }
+
+    private static func normalizedShellPath(
+        from shellPath: String?
+    ) -> String {
+        guard let shellPath,
+              shellPath.hasPrefix("/") else {
+            return Defaults.shellPath
+        }
+
+        return shellPath
+    }
+
+    private static func shellQuoted(
+        _ value: String
+    ) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+}
+
 struct SymphonyCodexLineBufferModel {
     private var bufferedData = Data()
     private let maxLineSize: Int
