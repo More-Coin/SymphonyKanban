@@ -6,30 +6,24 @@ import SwiftUI
 public struct SymphonyContentRouterView: View {
     let selectedTab: SymphonyTabViewModel
     let isRefreshing: Bool
-    let selectedIssueIdentifier: String?
-    let showInspector: Bool
     let onCardSelected: (String) -> Void
     let onRefreshTapped: () -> Void
-    let onToggleInspector: () -> Void
+    let onDismissInspector: () -> Void
 
     @State private var searchText = ""
 
     public init(
         selectedTab: SymphonyTabViewModel,
         isRefreshing: Bool,
-        selectedIssueIdentifier: String?,
-        showInspector: Bool,
         onCardSelected: @escaping (String) -> Void,
         onRefreshTapped: @escaping () -> Void,
-        onToggleInspector: @escaping () -> Void
+        onDismissInspector: @escaping () -> Void = {}
     ) {
         self.selectedTab = selectedTab
         self.isRefreshing = isRefreshing
-        self.selectedIssueIdentifier = selectedIssueIdentifier
-        self.showInspector = showInspector
         self.onCardSelected = onCardSelected
         self.onRefreshTapped = onRefreshTapped
-        self.onToggleInspector = onToggleInspector
+        self.onDismissInspector = onDismissInspector
     }
 
     public var body: some View {
@@ -38,7 +32,7 @@ public struct SymphonyContentRouterView: View {
 
             switch selectedTab {
             case .board:
-                SymphonyKanbanBoardView(onCardSelected: onCardSelected)
+                SymphonyKanbanBoardView(onCardSelected: onCardSelected, onBackgroundTapped: onDismissInspector)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
 
             case .list:
@@ -58,22 +52,12 @@ public struct SymphonyContentRouterView: View {
         .searchable(text: $searchText, prompt: "Search issues...")
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                HStack(spacing: SymphonyDesignStyle.Spacing.sm) {
-                    Button {
-                        onRefreshTapped()
-                    } label: {
-                        Label("Refresh", systemImage: "arrow.clockwise")
-                    }
-                    .disabled(isRefreshing)
-
-                    if selectedIssueIdentifier != nil {
-                        Button {
-                            onToggleInspector()
-                        } label: {
-                            Label("Inspector", systemImage: "sidebar.right")
-                        }
-                    }
+                Button {
+                    onRefreshTapped()
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
                 }
+                .disabled(isRefreshing)
             }
         }
     }

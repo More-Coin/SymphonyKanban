@@ -66,11 +66,9 @@ public struct SymphonyNavigationRoutes: View {
             SymphonyContentRouterView(
                 selectedTab: selectedTab,
                 isRefreshing: isRefreshing,
-                selectedIssueIdentifier: selectedIssueIdentifier,
-                showInspector: showInspector,
                 onCardSelected: handleIssueSelected,
                 onRefreshTapped: handleRefresh,
-                onToggleInspector: handleToggleInspector
+                onDismissInspector: handleDismissInspector
             )
         }
         .background(SymphonyDesignStyle.Background.primary.ignoresSafeArea())
@@ -118,9 +116,10 @@ public struct SymphonyNavigationRoutes: View {
         }
     }
 
-    private func handleToggleInspector() {
+    private func handleDismissInspector() {
+        guard showInspector else { return }
         withAnimation(SymphonyDesignStyle.Motion.smooth) {
-            showInspector.toggle()
+            selectedIssueIdentifier = nil
         }
     }
 

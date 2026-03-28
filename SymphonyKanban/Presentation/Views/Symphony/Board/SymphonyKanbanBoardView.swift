@@ -9,16 +9,19 @@ import SwiftUI
 public struct SymphonyKanbanBoardView: View {
     private let viewModel: SymphonyKanbanBoardViewModel
     private let onCardSelected: (String) -> Void
+    private let onBackgroundTapped: () -> Void
 
     @State private var dropTargetColumnID: String?
     @State private var appeared = false
 
     public init(
         viewModel: SymphonyKanbanBoardViewModel = Self.mockBoardViewModel,
-        onCardSelected: @escaping (String) -> Void = { _ in }
+        onCardSelected: @escaping (String) -> Void = { _ in },
+        onBackgroundTapped: @escaping () -> Void = {}
     ) {
         self.viewModel = viewModel
         self.onCardSelected = onCardSelected
+        self.onBackgroundTapped = onBackgroundTapped
     }
 
     public var body: some View {
@@ -46,6 +49,10 @@ public struct SymphonyKanbanBoardView: View {
             .padding(.vertical, SymphonyDesignStyle.Spacing.lg)
         }
         .background(SymphonyDesignStyle.Background.secondary.ignoresSafeArea())
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onBackgroundTapped()
+        }
         .onAppear {
             withAnimation(SymphonyDesignStyle.Motion.gentle) {
                 appeared = true
