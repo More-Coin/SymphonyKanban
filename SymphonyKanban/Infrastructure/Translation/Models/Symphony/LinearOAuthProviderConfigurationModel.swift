@@ -12,16 +12,6 @@ struct LinearOAuthProviderConfigurationModel {
             throw SymphonyTrackerAuthInfrastructureError.missingOAuthClientID
         }
 
-        guard let redirectURI = normalizedValue(for: "LINEAR_OAUTH_REDIRECT_URI") else {
-            throw SymphonyTrackerAuthInfrastructureError.missingOAuthRedirectURI
-        }
-
-        guard URL(string: redirectURI) != nil else {
-            throw SymphonyTrackerAuthInfrastructureError.invalidOAuthRedirectURI(
-                value: redirectURI
-            )
-        }
-
         let scopes = normalizedValue(for: "LINEAR_OAUTH_SCOPES")?
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -30,7 +20,7 @@ struct LinearOAuthProviderConfigurationModel {
         return SymphonyTrackerOAuthProviderConfigurationContract(
             clientID: clientID,
             clientSecret: normalizedValue(for: "LINEAR_OAUTH_CLIENT_SECRET"),
-            redirectURI: redirectURI,
+            redirectURI: LinearOAuthLoopbackConfiguration.redirectURI,
             authorizeEndpoint: "https://linear.app/oauth/authorize",
             tokenEndpoint: "https://api.linear.app/oauth/token",
             revokeEndpoint: "https://api.linear.app/oauth/revoke",

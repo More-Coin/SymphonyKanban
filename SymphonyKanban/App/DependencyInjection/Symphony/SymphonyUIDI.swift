@@ -3,12 +3,11 @@ import SwiftUI
 @MainActor
 public enum SymphonyUIDI {
     @MainActor
-    public static func makeNavigationRoutes(
-        pendingTrackerAuthCallbackURL: Binding<URL?> = .constant(nil)
-    ) -> SymphonyNavigationRoutes {
+    public static func makeNavigationRoutes() -> SymphonyNavigationRoutes {
         let runtimeQueryService = makeRuntimeQueryService()
         let environment = ProcessInfo.processInfo.environment
         let browserRuntime = SymphonyTrackerAuthBrowserRuntime()
+        let callbackPort: any SymphonyTrackerAuthCallbackPortProtocol = SymphonyLinearOAuthLoopbackGateway()
 
         return SymphonyNavigationRoutes(
             issueDetailController: SymphonyIssueDetailController(
@@ -17,9 +16,11 @@ public enum SymphonyUIDI {
             authController: makeAuthController(
                 environment: environment
             ),
-            pendingTrackerAuthCallbackURL: pendingTrackerAuthCallbackURL,
             launchTrackerAuthorizationURL: { url in
                 browserRuntime.open(url)
+            },
+            awaitTrackerAuthorizationCallback: {
+                try await callbackPort.awaitAuthorizationCallback()
             },
             initialSelectedIssueIdentifier: "KAN-142"
         )

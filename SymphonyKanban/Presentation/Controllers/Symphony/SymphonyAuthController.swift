@@ -47,14 +47,9 @@ public struct SymphonyAuthController {
     }
 
     public func completeAuthorizationViewModel(
-        from callbackURL: URL
+        using callback: SymphonyTrackerAuthCallbackContract
     ) async -> SymphonyAuthViewModel {
         do {
-            let callback = try SymphonyTrackerAuthCallbackDTO(
-                callbackURL: callbackURL
-            ).callbackContract(
-                trackerKind: trackerConfiguration.kind ?? "linear"
-            )
             let status = try await executeStatus(
                 .completeAuthorization(
                     trackerConfiguration: trackerConfiguration,

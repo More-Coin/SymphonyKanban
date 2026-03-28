@@ -3,8 +3,6 @@ import Foundation
 public enum SymphonyTrackerAuthInfrastructureError: StructuredErrorProtocol, LocalizedError {
     case unsupportedTrackerKind(actualKind: String?)
     case missingOAuthClientID
-    case missingOAuthRedirectURI
-    case invalidOAuthRedirectURI(value: String)
     case authorizationURLBuildFailed
     case authorizationDenied(errorCode: String, errorDescription: String?)
     case missingAuthorizationCode
@@ -22,10 +20,6 @@ public enum SymphonyTrackerAuthInfrastructureError: StructuredErrorProtocol, Loc
             return "symphony.tracker_auth.unsupported_tracker_kind"
         case .missingOAuthClientID:
             return "symphony.tracker_auth.missing_oauth_client_id"
-        case .missingOAuthRedirectURI:
-            return "symphony.tracker_auth.missing_oauth_redirect_uri"
-        case .invalidOAuthRedirectURI:
-            return "symphony.tracker_auth.invalid_oauth_redirect_uri"
         case .authorizationURLBuildFailed:
             return "symphony.tracker_auth.authorization_url_build_failed"
         case .authorizationDenied:
@@ -55,10 +49,6 @@ public enum SymphonyTrackerAuthInfrastructureError: StructuredErrorProtocol, Loc
             return "The configured tracker kind is not supported by the tracker auth adapter."
         case .missingOAuthClientID:
             return "The Linear OAuth client ID is missing."
-        case .missingOAuthRedirectURI:
-            return "The Linear OAuth redirect URI is missing."
-        case .invalidOAuthRedirectURI:
-            return "The Linear OAuth redirect URI is invalid."
         case .authorizationURLBuildFailed:
             return "The Linear authorization URL could not be created."
         case .authorizationDenied:
@@ -88,8 +78,6 @@ public enum SymphonyTrackerAuthInfrastructureError: StructuredErrorProtocol, Loc
             return true
         case .unsupportedTrackerKind,
              .missingOAuthClientID,
-             .missingOAuthRedirectURI,
-             .invalidOAuthRedirectURI,
              .authorizationURLBuildFailed,
              .authorizationDenied,
              .missingAuthorizationCode,
@@ -107,12 +95,8 @@ public enum SymphonyTrackerAuthInfrastructureError: StructuredErrorProtocol, Loc
             return actualKind.map { "Received tracker kind `\($0)`." }
         case .missingOAuthClientID:
             return "Set `LINEAR_OAUTH_CLIENT_ID` in the host environment."
-        case .missingOAuthRedirectURI:
-            return "Set `LINEAR_OAUTH_REDIRECT_URI` in the host environment."
-        case .invalidOAuthRedirectURI(let value):
-            return "Received redirect URI `\(value)`."
         case .authorizationURLBuildFailed:
-            return "Check the configured client ID, redirect URI, and scope values."
+            return "Check the configured client ID and scope values."
         case .authorizationDenied(let errorCode, let errorDescription):
             if let errorDescription, !errorDescription.isEmpty {
                 return "Code: \(errorCode). Description: \(errorDescription)"

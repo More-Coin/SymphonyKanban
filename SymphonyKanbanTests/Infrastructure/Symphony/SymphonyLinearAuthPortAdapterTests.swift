@@ -69,7 +69,7 @@ struct SymphonyLinearAuthPortAdapterTests {
         #expect(result.trackerKind == "linear")
         #expect(components.host == "linear.app")
         #expect(queryItems["client_id"] == "client-id")
-        #expect(queryItems["redirect_uri"] == "symphony://linear/oauth/callback")
+        #expect(queryItems["redirect_uri"] == LinearOAuthLoopbackConfiguration.redirectURI)
         #expect(queryItems["response_type"] == "code")
         #expect(queryItems["scope"] == "read,issues:read")
         #expect(queryItems["state"] == pendingAuthorization.state)
@@ -147,7 +147,6 @@ struct SymphonyLinearAuthPortAdapterTests {
     private static func oauthEnvironment() -> [String: String] {
         [
             "LINEAR_OAUTH_CLIENT_ID": "client-id",
-            "LINEAR_OAUTH_REDIRECT_URI": "symphony://linear/oauth/callback",
             "LINEAR_OAUTH_SCOPES": "read,issues:read"
         ]
     }

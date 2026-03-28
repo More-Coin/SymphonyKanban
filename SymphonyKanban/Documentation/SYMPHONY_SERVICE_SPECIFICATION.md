@@ -358,9 +358,10 @@ Fields:
 - Interactive Linear auth uses a stored OAuth session instead of `tracker.api_key`.
 - Linear OAuth provider configuration is supplied outside workflow front matter:
   - `LINEAR_OAUTH_CLIENT_ID` (required)
-  - `LINEAR_OAUTH_REDIRECT_URI` (required)
   - `LINEAR_OAUTH_CLIENT_SECRET` (optional)
   - `LINEAR_OAUTH_SCOPES` (optional, default `read`)
+  - Redirect URI is fixed by the app to `http://127.0.0.1:8765/linear/oauth/callback`
+  - The same URI must be registered in the Linear OAuth application callback settings
 
 #### 5.3.2 `polling` (object)
 
@@ -562,7 +563,8 @@ This section is intentionally redundant so a coding agent can implement the conf
 - `tracker.project_slug`: string, required when `tracker.kind=linear`
 - `tracker.active_state_types`: list of strings, default `["backlog", "unstarted", "started"]`
 - `tracker.terminal_state_types`: list of strings, default `["completed", "canceled"]`
-- Linear OAuth env (App/runtime): `LINEAR_OAUTH_CLIENT_ID`, `LINEAR_OAUTH_REDIRECT_URI`, optional `LINEAR_OAUTH_CLIENT_SECRET`, optional `LINEAR_OAUTH_SCOPES`
+- Linear OAuth env (App/runtime): `LINEAR_OAUTH_CLIENT_ID`, optional `LINEAR_OAUTH_CLIENT_SECRET`, optional `LINEAR_OAUTH_SCOPES`
+- Linear OAuth redirect URI (fixed loopback): `http://127.0.0.1:8765/linear/oauth/callback`
 - `polling.interval_ms`: integer, default `30000`
 - `workspace.root`: path, default `<system-temp>/symphony_workspaces`
 - `worker.ssh_hosts` (extension): list of SSH host strings, optional; when omitted, work runs
@@ -2071,7 +2073,8 @@ These checks are recommended for production readiness and may be skipped in CI w
 network access, or external service permissions are unavailable.
 
 - A real tracker smoke test can be run after completing the Linear OAuth connect flow with valid
-  `LINEAR_OAUTH_CLIENT_ID` and `LINEAR_OAUTH_REDIRECT_URI` configuration.
+  `LINEAR_OAUTH_CLIENT_ID` configuration and a Linear OAuth application that allows
+  `http://127.0.0.1:8765/linear/oauth/callback`.
 - Real integration tests should use isolated test identifiers/workspaces and clean up tracker
   artifacts when practical.
 - A skipped real-integration test should be reported as skipped, not silently treated as passed.

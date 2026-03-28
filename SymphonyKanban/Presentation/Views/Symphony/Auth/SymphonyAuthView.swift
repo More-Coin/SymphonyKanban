@@ -297,7 +297,7 @@ public struct SymphonyAuthView: View {
         case .staleSession:
             return "Reconnect in the browser to replace the stored session."
         case .disconnected:
-            return "Connect opens \(service.name) in your browser and completes through the configured callback."
+            return "Connect opens \(service.name) in your browser and completes through the localhost callback listener."
         case .connected:
             return ""
         }
@@ -308,7 +308,7 @@ extension SymphonyAuthView {
     static var mockViewModel: SymphonyAuthViewModel {
         SymphonyAuthViewModel(
             title: "Linear Connection",
-            subtitle: "Authorize Linear in your browser and let Symphony manage the callback.",
+            subtitle: "Authorize Linear in your browser and let Symphony manage the localhost callback.",
             services: [
             SymphonyAuthServiceViewModel(
                 id: "linear",
