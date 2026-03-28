@@ -39,7 +39,8 @@ let package = Package(
                 "Documentation",
                 "Domain/README_Domain.md",
                 "Infrastructure/README_Infrastructure.md",
-                "Presentation/README_Presentation.md"
+                "Presentation/README_Presentation.md",
+                "SymphonyKanban.entitlements"
             ]
         ),
         .executableTarget(

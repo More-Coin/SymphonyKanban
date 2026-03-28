@@ -11,7 +11,7 @@ struct SymphonyLinearAuthPortAdapterTests {
                 pendingAuthorization: LinearOAuthPendingAuthorizationModel(
                     state: "pending-state",
                     codeVerifier: "code-verifier",
-                    createdAt: Date(timeIntervalSince1970: 100)
+                    createdAt: Date()
                 )
             ),
             gateway: SymphonyLinearOAuthGateway()
@@ -21,6 +21,30 @@ struct SymphonyLinearAuthPortAdapterTests {
 
         #expect(status.state == .connecting)
         #expect(status.statusMessage == "Waiting for the OAuth callback.")
+    }
+
+    @Test
+    func queryStatusClearsExpiredPendingAuthorizationAndReturnsDisconnected() throws {
+        let secureStore = LinearOAuthIssueTrackerSecureStoreSpy(
+            pendingAuthorization: LinearOAuthPendingAuthorizationModel(
+                state: "expired-state",
+                codeVerifier: "expired-code-verifier",
+                createdAt: Date().addingTimeInterval(
+                    -(LinearOAuthLoopbackConfiguration.timeoutInterval + 1)
+                )
+            )
+        )
+        let adapter = SymphonyLinearTrackerAuthPortAdapter(
+            environment: Self.oauthEnvironment(),
+            secureStore: secureStore,
+            gateway: SymphonyLinearOAuthGateway()
+        )
+
+        let status = try adapter.queryStatus(for: Self.linearSource())
+
+        #expect(status.state == .disconnected)
+        #expect(status.statusMessage == "The previous OAuth callback window expired. Connect to Linear again.")
+        #expect(try secureStore.loadPendingAuthorization() == nil)
     }
 
     @Test
@@ -125,10 +149,12 @@ struct SymphonyLinearAuthPortAdapterTests {
         #expect(status.state == .connected)
         #expect(status.statusMessage == "Connected to Linear.")
         #expect(request.url?.absoluteString == "https://api.linear.app/oauth/token")
-        #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
-        #expect(try Self.requestBody(request)["grant_type"] as? String == "authorization_code")
-        #expect(try Self.requestBody(request)["code"] as? String == "received-code")
-        #expect(try Self.requestBody(request)["code_verifier"] as? String == "expected-code-verifier")
+        #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/x-www-form-urlencoded")
+        #expect(request.value(forHTTPHeaderField: "Accept") == "application/json")
+        #expect(try Self.requestBody(request)["grant_type"] == "authorization_code")
+        #expect(try Self.requestBody(request)["code"] == "received-code")
+        #expect(try Self.requestBody(request)["code_verifier"] == "expected-code-verifier")
+        #expect(try Self.requestBody(request)["redirect_uri"] == LinearOAuthLoopbackConfiguration.redirectURI)
         #expect(session.accessToken == "new-access-token")
         #expect(session.refreshToken == "new-refresh-token")
         #expect(try secureStore.loadPendingAuthorization() == nil)
@@ -167,21 +193,33 @@ struct SymphonyLinearAuthPortAdapterTests {
 
     private static func requestBody(
         _ request: URLRequest
-    ) throws -> [String: Any] {
+    ) throws -> [String: String] {
         enum InvalidRequestBody: Error {
             case missingBody
-            case invalidObject
+            case invalidEncoding
         }
 
         guard let body = request.httpBody else {
             throw InvalidRequestBody.missingBody
         }
 
-        guard let object = try JSONSerialization.jsonObject(with: body) as? [String: Any] else {
-            throw InvalidRequestBody.invalidObject
+        guard let bodyString = String(data: body, encoding: .utf8) else {
+            throw InvalidRequestBody.invalidEncoding
         }
 
-        return object
+        return bodyString
+            .split(separator: "&")
+            .reduce(into: [String: String]()) { result, pair in
+                let components = pair.split(separator: "=", maxSplits: 1).map(String.init)
+                guard let key = components.first?.removingPercentEncoding else {
+                    return
+                }
+
+                let value = components.count == 2
+                    ? components[1].removingPercentEncoding ?? components[1]
+                    : ""
+                result[key] = value
+            }
     }
 }
 

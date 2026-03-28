@@ -10,7 +10,9 @@ public struct SymphonyNavigationRoutes: View {
     private let issueDetailController: SymphonyIssueDetailController
     private let authController: SymphonyAuthController
     private let launchTrackerAuthorizationURL: @MainActor (URL) throws -> Void
+    private let prepareTrackerAuthorizationCallbackListener: @MainActor () async throws -> Void
     private let awaitTrackerAuthorizationCallback: @MainActor () async throws -> SymphonyTrackerAuthCallbackContract
+    private let cancelTrackerAuthorizationCallbackListener: @MainActor () async -> Void
 
     @State private var selectedTab: SymphonyTabViewModel = .board
     @State private var selectedIssueIdentifier: String?
@@ -24,17 +26,21 @@ public struct SymphonyNavigationRoutes: View {
         issueDetailController: SymphonyIssueDetailController,
         authController: SymphonyAuthController,
         launchTrackerAuthorizationURL: @escaping @MainActor (URL) throws -> Void = { _ in },
+        prepareTrackerAuthorizationCallbackListener: @escaping @MainActor () async throws -> Void = {},
         awaitTrackerAuthorizationCallback: @escaping @MainActor () async throws -> SymphonyTrackerAuthCallbackContract = {
             throw SymphonyTrackerAuthPresentationError.callbackListenerFailed(
                 details: "The callback listener was not configured."
             )
         },
+        cancelTrackerAuthorizationCallbackListener: @escaping @MainActor () async -> Void = {},
         initialSelectedIssueIdentifier: String? = nil
     ) {
         self.issueDetailController = issueDetailController
         self.authController = authController
         self.launchTrackerAuthorizationURL = launchTrackerAuthorizationURL
+        self.prepareTrackerAuthorizationCallbackListener = prepareTrackerAuthorizationCallbackListener
         self.awaitTrackerAuthorizationCallback = awaitTrackerAuthorizationCallback
+        self.cancelTrackerAuthorizationCallbackListener = cancelTrackerAuthorizationCallbackListener
         _selectedIssueIdentifier = State(initialValue: initialSelectedIssueIdentifier)
     }
 
@@ -122,14 +128,11 @@ public struct SymphonyNavigationRoutes: View {
         _ service: SymphonyAuthServiceViewModel
     ) {
         Task {
-            let callbackTask = Task {
-                try await awaitTrackerAuthorizationCallback()
-            }
-
             do {
+                try await prepareTrackerAuthorizationCallbackListener()
                 let result = try await authController.startAuthorization()
                 guard let url = URL(string: result.browserLaunchURL) else {
-                    callbackTask.cancel()
+                    await cancelTrackerAuthorizationCallbackListener()
                     authViewModel = authController.errorViewModel(
                         for: SymphonyTrackerAuthPresentationError.invalidAuthorizationURL
                     )
@@ -138,13 +141,13 @@ public struct SymphonyNavigationRoutes: View {
 
                 authViewModel = await authController.viewModelAfterStartingAuthorization()
                 try launchTrackerAuthorizationURL(url)
-                let callback = try await callbackTask.value
+                let callback = try await awaitTrackerAuthorizationCallback()
                 authViewModel = await authController.completeAuthorizationViewModel(using: callback)
                 if authViewModel.linearService?.isConnected == true {
                     showAuthSheet = false
                 }
             } catch {
-                callbackTask.cancel()
+                await cancelTrackerAuthorizationCallbackListener()
                 authViewModel = authController.errorViewModel(for: error)
             }
         }

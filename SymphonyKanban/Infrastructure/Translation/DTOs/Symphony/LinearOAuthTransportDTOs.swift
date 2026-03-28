@@ -130,7 +130,6 @@ struct LinearOAuthTokenTransportRequestBuilder {
     func makeAuthorizationCodeRequest(
         _ request: SymphonyTrackerOAuthTokenExchangeContract,
         using configuration: SymphonyTrackerOAuthProviderConfigurationContract,
-        jsonEncoder: JSONEncoder,
         timeoutInterval: TimeInterval
     ) throws -> URLRequest {
         try makeAuthorizationCodeRequest(
@@ -138,20 +137,17 @@ struct LinearOAuthTokenTransportRequestBuilder {
                 configuration: configuration,
                 request: request
             ),
-            using: jsonEncoder,
             timeoutInterval: timeoutInterval
         )
     }
 
     func makeAuthorizationCodeRequest(
         _ requestDefinition: LinearOAuthTokenExchangeRequestDTO,
-        using jsonEncoder: JSONEncoder,
         timeoutInterval: TimeInterval
     ) throws -> URLRequest {
         try makeRequest(
             endpoint: requestDefinition.configuration.tokenEndpoint,
             body: authorizationCodePayload(from: requestDefinition),
-            using: jsonEncoder,
             timeoutInterval: timeoutInterval
         )
     }
@@ -159,7 +155,6 @@ struct LinearOAuthTokenTransportRequestBuilder {
     func makeRefreshTokenRequest(
         _ request: SymphonyTrackerOAuthRefreshContract,
         using configuration: SymphonyTrackerOAuthProviderConfigurationContract,
-        jsonEncoder: JSONEncoder,
         timeoutInterval: TimeInterval
     ) throws -> URLRequest {
         try makeRefreshTokenRequest(
@@ -167,20 +162,17 @@ struct LinearOAuthTokenTransportRequestBuilder {
                 configuration: configuration,
                 request: request
             ),
-            using: jsonEncoder,
             timeoutInterval: timeoutInterval
         )
     }
 
     func makeRefreshTokenRequest(
         _ requestDefinition: LinearOAuthRefreshTokenRequestDTO,
-        using jsonEncoder: JSONEncoder,
         timeoutInterval: TimeInterval
     ) throws -> URLRequest {
         try makeRequest(
             endpoint: requestDefinition.configuration.tokenEndpoint,
             body: refreshTokenPayload(from: requestDefinition),
-            using: jsonEncoder,
             timeoutInterval: timeoutInterval
         )
     }
@@ -188,7 +180,6 @@ struct LinearOAuthTokenTransportRequestBuilder {
     func makeRevokeTokenRequest(
         _ request: SymphonyTrackerOAuthRevocationContract,
         using configuration: SymphonyTrackerOAuthProviderConfigurationContract,
-        jsonEncoder: JSONEncoder,
         timeoutInterval: TimeInterval
     ) throws -> URLRequest {
         try makeRevokeTokenRequest(
@@ -196,20 +187,17 @@ struct LinearOAuthTokenTransportRequestBuilder {
                 configuration: configuration,
                 request: request
             ),
-            using: jsonEncoder,
             timeoutInterval: timeoutInterval
         )
     }
 
     func makeRevokeTokenRequest(
         _ requestDefinition: LinearOAuthRevokeTokenRequestDTO,
-        using jsonEncoder: JSONEncoder,
         timeoutInterval: TimeInterval
     ) throws -> URLRequest {
         try makeRequest(
             endpoint: requestDefinition.configuration.revokeEndpoint,
             body: revokeTokenPayload(from: requestDefinition),
-            using: jsonEncoder,
             timeoutInterval: timeoutInterval
         )
     }
@@ -217,7 +205,6 @@ struct LinearOAuthTokenTransportRequestBuilder {
     private func makeRequest(
         endpoint: String,
         body: [String: String],
-        using jsonEncoder: JSONEncoder,
         timeoutInterval: TimeInterval
     ) throws -> URLRequest {
         guard let url = URL(string: endpoint) else {
@@ -229,8 +216,12 @@ struct LinearOAuthTokenTransportRequestBuilder {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
-        request.httpBody = try jsonEncoder.encode(body)
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = formURLEncodedData(from: body)
+        request.setValue(
+            "application/x-www-form-urlencoded",
+            forHTTPHeaderField: "Content-Type"
+        )
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         return request
     }
 
@@ -282,5 +273,28 @@ struct LinearOAuthTokenTransportRequestBuilder {
         }
 
         return payload
+    }
+
+    private func formURLEncodedData(
+        from body: [String: String]
+    ) -> Data {
+        let payload = body
+            .sorted { $0.key < $1.key }
+            .map { key, value in
+                "\(Self.percentEncoded(key))=\(Self.percentEncoded(value))"
+            }
+            .joined(separator: "&")
+
+        return Data(payload.utf8)
+    }
+
+    private static func percentEncoded(
+        _ value: String
+    ) -> String {
+        let allowedCharacters = CharacterSet.alphanumerics.union(
+            CharacterSet(charactersIn: "-._~")
+        )
+
+        return value.addingPercentEncoding(withAllowedCharacters: allowedCharacters) ?? value
     }
 }

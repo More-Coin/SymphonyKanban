@@ -20,18 +20,15 @@ struct SymphonyLinearOAuthGateway: SymphonyTrackerOAuthPortProtocol, @unchecked 
     private static let defaultTimeoutInterval: TimeInterval = 30
 
     private let jsonDecoder: JSONDecoder
-    private let jsonEncoder: JSONEncoder
     private let requestExecutor: RequestExecutor
     private let requestBuilder = LinearOAuthTokenTransportRequestBuilder()
     private let responseTranslator = LinearOAuthTokenResponseDTOTranslator()
 
     init(
         jsonDecoder: JSONDecoder = JSONDecoder(),
-        jsonEncoder: JSONEncoder = JSONEncoder(),
         requestExecutor: @escaping RequestExecutor = symphonyDefaultLinearOAuthRequestExecutor
     ) {
         self.jsonDecoder = jsonDecoder
-        self.jsonEncoder = jsonEncoder
         self.requestExecutor = requestExecutor
     }
 
@@ -42,7 +39,6 @@ struct SymphonyLinearOAuthGateway: SymphonyTrackerOAuthPortProtocol, @unchecked 
         let request = try requestBuilder.makeAuthorizationCodeRequest(
             request,
             using: configuration,
-            jsonEncoder: jsonEncoder,
             timeoutInterval: Self.defaultTimeoutInterval
         )
         return responseTranslator.toContract(
@@ -57,7 +53,6 @@ struct SymphonyLinearOAuthGateway: SymphonyTrackerOAuthPortProtocol, @unchecked 
         let request = try requestBuilder.makeRefreshTokenRequest(
             request,
             using: configuration,
-            jsonEncoder: jsonEncoder,
             timeoutInterval: Self.defaultTimeoutInterval
         )
         return responseTranslator.toContract(
@@ -72,7 +67,6 @@ struct SymphonyLinearOAuthGateway: SymphonyTrackerOAuthPortProtocol, @unchecked 
         let request = try requestBuilder.makeRevokeTokenRequest(
             request,
             using: configuration,
-            jsonEncoder: jsonEncoder,
             timeoutInterval: Self.defaultTimeoutInterval
         )
 

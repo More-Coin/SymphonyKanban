@@ -14,7 +14,7 @@ struct LinearOAuthLoopbackCallbackTransportParser {
     ) -> Result<SymphonyTrackerAuthCallbackContract, Error> {
         if let error {
             return .failure(
-                SymphonyTrackerAuthPresentationError.callbackListenerFailed(
+                SymphonyTrackerAuthInfrastructureError.callbackListenerFailed(
                     details: error.localizedDescription
                 )
             )
@@ -23,13 +23,13 @@ struct LinearOAuthLoopbackCallbackTransportParser {
         guard let data,
               let request = String(data: data, encoding: .utf8),
               let requestLine = request.components(separatedBy: "\r\n").first else {
-            return .failure(SymphonyTrackerAuthPresentationError.invalidCallbackURL)
+            return .failure(SymphonyTrackerAuthInfrastructureError.invalidCallbackURL)
         }
 
         let parts = requestLine.split(separator: " ", omittingEmptySubsequences: true)
         guard parts.count >= 2,
               parts[0] == "GET" else {
-            return .failure(SymphonyTrackerAuthPresentationError.invalidCallbackURL)
+            return .failure(SymphonyTrackerAuthInfrastructureError.invalidCallbackURL)
         }
 
         let requestTarget = String(parts[1])
@@ -37,7 +37,7 @@ struct LinearOAuthLoopbackCallbackTransportParser {
             string: "http://\(LinearOAuthLoopbackConfiguration.host):\(LinearOAuthLoopbackConfiguration.port)\(requestTarget)"
         ),
         components.path == LinearOAuthLoopbackConfiguration.path else {
-            return .failure(SymphonyTrackerAuthPresentationError.invalidCallbackURL)
+            return .failure(SymphonyTrackerAuthInfrastructureError.invalidCallbackURL)
         }
 
         let queryItems = Dictionary(

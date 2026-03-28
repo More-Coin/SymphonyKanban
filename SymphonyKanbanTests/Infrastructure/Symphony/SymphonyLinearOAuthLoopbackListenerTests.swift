@@ -5,10 +5,9 @@ import Testing
 @Suite(.serialized)
 struct SymphonyLinearOAuthLoopbackListenerTests {
     @Test
-    func awaitLinearCallbackParsesAuthorizationCodeFromLoopbackRequest() async throws {
+    func preparedListenerAcceptsCallbackThatArrivesBeforeAwaitBegins() async throws {
         let gateway = SymphonyLinearOAuthLoopbackGateway()
-
-        async let callback = gateway.awaitLinearCallback(timeout: .seconds(10))
+        try await gateway.prepareAuthorizationCallbackListener()
 
         let callbackURL = try #require(
             URL(
@@ -17,7 +16,7 @@ struct SymphonyLinearOAuthLoopbackListenerTests {
         )
         try await sendLoopbackCallback(to: callbackURL)
 
-        let result = try await callback
+        let result = try await gateway.awaitAuthorizationCallback()
 
         #expect(result.trackerKind == "linear")
         #expect(result.authorizationCode == "received-code")
@@ -28,8 +27,9 @@ struct SymphonyLinearOAuthLoopbackListenerTests {
     @Test
     func awaitLinearCallbackTimesOutWhenNoBrowserRedirectArrives() async throws {
         let gateway = SymphonyLinearOAuthLoopbackGateway()
+        try await gateway.prepareAuthorizationCallbackListener()
 
-        await #expect(throws: SymphonyTrackerAuthPresentationError.self) {
+        await #expect(throws: SymphonyTrackerAuthInfrastructureError.self) {
             _ = try await gateway.awaitLinearCallback(timeout: .milliseconds(100))
         }
     }

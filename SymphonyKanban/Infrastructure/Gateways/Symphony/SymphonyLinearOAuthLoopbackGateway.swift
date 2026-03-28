@@ -5,66 +5,34 @@ actor SymphonyLinearOAuthLoopbackGateway: SymphonyTrackerAuthCallbackPortProtoco
     private let listenerQueue = DispatchQueue(label: "com.jido.SymphonyKanban.linear-oauth-loopback")
     private static let requestParser = LinearOAuthLoopbackCallbackTransportParser()
     private static let responseBuilder = LinearOAuthLoopbackHTTPResponseBuilder()
+    private var preparedSession: PreparedCallbackSession?
 
-    func awaitAuthorizationCallback() async throws -> SymphonyTrackerAuthCallbackContract {
-        try await awaitLinearCallback()
-    }
+    func prepareAuthorizationCallbackListener() async throws {
+        cancelPreparedSession()
 
-    func awaitLinearCallback(
-        timeout: Duration = LinearOAuthLoopbackConfiguration.timeout
-    ) async throws -> SymphonyTrackerAuthCallbackContract {
         let listener = try Self.makeListener()
+        let callbackStreamGateway = Self.makeCallbackStreamGateway()
+        let continuationGateway = SymphonyLinearOAuthLoopbackContinuationGateway(
+            callbackStreamGateway: callbackStreamGateway
+        )
 
-        return try await withThrowingTaskGroup(of: SymphonyTrackerAuthCallbackContract.self) { group in
-            group.addTask {
-                try await self.receiveCallback(using: listener)
-            }
-            group.addTask {
-                try await Task.sleep(for: timeout)
-                throw SymphonyTrackerAuthPresentationError.callbackTimedOut
-            }
-
-            defer {
-                group.cancelAll()
-                listener.cancel()
-            }
-
-            guard let result = try await group.next() else {
-                throw SymphonyTrackerAuthPresentationError.callbackListenerFailed(
-                    details: "The OAuth callback listener ended without producing a result."
-                )
-            }
-
-            return result
-        }
-    }
-
-    private func receiveCallback(
-        using listener: NWListener
-    ) async throws -> SymphonyTrackerAuthCallbackContract {
-        try await withCheckedThrowingContinuation { continuation in
-            let continuationGateway = SymphonyLinearOAuthLoopbackContinuationGateway(
-                continuation: continuation
-            )
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            continuationGateway.installReadyContinuation(continuation)
 
             listener.stateUpdateHandler = { currentState in
                 switch currentState {
+                case .ready:
+                    continuationGateway.resumeReady()
                 case .failed(let error):
-                    continuationGateway.resume(
-                        with: .failure(
-                            SymphonyTrackerAuthPresentationError.callbackListenerFailed(
-                                details: error.localizedDescription
-                            )
-                        )
-                    )
+                    let failure = Self.listenerFailure(details: error.localizedDescription)
+                    continuationGateway.failReady(with: failure)
+                    continuationGateway.finishCallbacks(with: failure)
                 case .cancelled:
-                    continuationGateway.resume(
-                        with: .failure(
-                            SymphonyTrackerAuthPresentationError.callbackListenerFailed(
-                                details: "The OAuth callback listener was cancelled."
-                            )
-                        )
+                    let failure = Self.listenerFailure(
+                        details: "The OAuth callback listener was cancelled."
                     )
+                    continuationGateway.failReady(with: failure)
+                    continuationGateway.finishCallbacks(with: failure)
                 default:
                     break
                 }
@@ -75,6 +43,69 @@ actor SymphonyLinearOAuthLoopbackGateway: SymphonyTrackerAuthCallbackPortProtoco
             }
 
             listener.start(queue: listenerQueue)
+        }
+
+        preparedSession = PreparedCallbackSession(
+            listener: listener,
+            callbackStream: callbackStreamGateway.stream
+        )
+    }
+
+    func awaitAuthorizationCallback() async throws -> SymphonyTrackerAuthCallbackContract {
+        if preparedSession == nil {
+            try await prepareAuthorizationCallbackListener()
+        }
+
+        return try await awaitPreparedAuthorizationCallback()
+    }
+
+    func cancelAuthorizationCallbackListener() async {
+        cancelPreparedSession()
+    }
+
+    func awaitLinearCallback(
+        timeout: Duration = LinearOAuthLoopbackConfiguration.timeout
+    ) async throws -> SymphonyTrackerAuthCallbackContract {
+        try await prepareAuthorizationCallbackListener()
+        return try await awaitPreparedAuthorizationCallback(timeout: timeout)
+    }
+
+    private func awaitPreparedAuthorizationCallback(
+        timeout: Duration = LinearOAuthLoopbackConfiguration.timeout
+    ) async throws -> SymphonyTrackerAuthCallbackContract {
+        guard let preparedSession else {
+            throw Self.listenerFailure(
+                details: "The OAuth callback listener was not prepared."
+            )
+        }
+
+        return try await withThrowingTaskGroup(of: SymphonyTrackerAuthCallbackContract.self) { group in
+            group.addTask {
+                var iterator = preparedSession.callbackStream.makeAsyncIterator()
+                guard let callback = try await iterator.next() else {
+                    throw Self.listenerFailure(
+                        details: "The OAuth callback listener ended without producing a result."
+                    )
+                }
+                return callback
+            }
+            group.addTask {
+                try await Task.sleep(for: timeout)
+                throw SymphonyTrackerAuthInfrastructureError.callbackTimedOut
+            }
+
+            defer {
+                group.cancelAll()
+                cancelPreparedSession()
+            }
+
+            guard let result = try await group.next() else {
+                throw Self.listenerFailure(
+                    details: "The OAuth callback listener ended without producing a result."
+                )
+            }
+
+            return result
         }
     }
 
@@ -92,7 +123,13 @@ actor SymphonyLinearOAuthLoopbackGateway: SymphonyTrackerAuthCallbackPortProtoco
                 statusCode: response.statusCode,
                 body: response.body
             )
-            continuationGateway.resume(with: response.callbackResult)
+            switch response.callbackResult {
+            case .success(let callback):
+                continuationGateway.yield(callback)
+                continuationGateway.finishCallbacks()
+            case .failure(let error):
+                continuationGateway.finishCallbacks(with: error)
+            }
         }
     }
 
@@ -118,45 +155,118 @@ actor SymphonyLinearOAuthLoopbackGateway: SymphonyTrackerAuthCallbackPortProtoco
 
     private static func makeListener() throws -> NWListener {
         guard let port = NWEndpoint.Port(rawValue: LinearOAuthLoopbackConfiguration.port) else {
-            throw SymphonyTrackerAuthPresentationError.callbackListenerFailed(
+            throw listenerFailure(
                 details: "The configured localhost callback port is invalid."
             )
         }
 
         do {
-            return try NWListener(using: .tcp, on: port)
+            let parameters = NWParameters.tcp
+            parameters.allowLocalEndpointReuse = true
+            return try NWListener(using: parameters, on: port)
         } catch {
-            throw SymphonyTrackerAuthPresentationError.callbackListenerFailed(
+            throw listenerFailure(
                 details: error.localizedDescription
             )
         }
+    }
+
+    private func cancelPreparedSession() {
+        preparedSession?.listener.cancel()
+        preparedSession = nil
+    }
+
+    private static func makeCallbackStreamGateway() -> CallbackStreamGateway {
+        var continuation: AsyncThrowingStream<SymphonyTrackerAuthCallbackContract, Error>.Continuation?
+        let stream = AsyncThrowingStream<SymphonyTrackerAuthCallbackContract, Error> {
+            continuation = $0
+        }
+
+        return CallbackStreamGateway(
+            stream: stream,
+            continuation: continuation
+        )
+    }
+
+    private static func listenerFailure(
+        details: String
+    ) -> SymphonyTrackerAuthInfrastructureError {
+        .callbackListenerFailed(details: details)
+    }
+
+    private struct PreparedCallbackSession {
+        let listener: NWListener
+        let callbackStream: AsyncThrowingStream<SymphonyTrackerAuthCallbackContract, Error>
+    }
+
+    private struct CallbackStreamGateway {
+        let stream: AsyncThrowingStream<SymphonyTrackerAuthCallbackContract, Error>
+        let continuation: AsyncThrowingStream<SymphonyTrackerAuthCallbackContract, Error>.Continuation?
     }
 
     private final class SymphonyLinearOAuthLoopbackContinuationGateway: @unchecked Sendable {
         let queue = DispatchQueue(label: "com.jido.SymphonyKanban.linear-oauth-loopback.connection")
 
         private let lock = NSLock()
-        private var continuation: CheckedContinuation<SymphonyTrackerAuthCallbackContract, Error>?
+        private let callbackStreamGateway: CallbackStreamGateway
+        private var readyContinuation: CheckedContinuation<Void, Error>?
 
         init(
-            continuation: CheckedContinuation<SymphonyTrackerAuthCallbackContract, Error>
+            callbackStreamGateway: CallbackStreamGateway
         ) {
-            self.continuation = continuation
+            self.callbackStreamGateway = callbackStreamGateway
         }
 
-        func resume(
-            with result: Result<SymphonyTrackerAuthCallbackContract, Error>
+        func installReadyContinuation(
+            _ continuation: CheckedContinuation<Void, Error>
         ) {
             lock.lock()
-            let continuation = self.continuation
-            self.continuation = nil
+            readyContinuation = continuation
+            lock.unlock()
+        }
+
+        func resumeReady() {
+            lock.lock()
+            let continuation = readyContinuation
+            readyContinuation = nil
             lock.unlock()
 
             guard let continuation else {
                 return
             }
 
-            continuation.resume(with: result)
+            continuation.resume()
+        }
+
+        func failReady(
+            with error: any Error
+        ) {
+            lock.lock()
+            let continuation = readyContinuation
+            readyContinuation = nil
+            lock.unlock()
+
+            guard let continuation else {
+                return
+            }
+
+            continuation.resume(throwing: error)
+        }
+
+        func yield(
+            _ callback: SymphonyTrackerAuthCallbackContract
+        ) {
+            callbackStreamGateway.continuation?.yield(callback)
+        }
+
+        func finishCallbacks() {
+            callbackStreamGateway.continuation?.finish()
+        }
+
+        func finishCallbacks(
+            with error: any Error
+        ) {
+            callbackStreamGateway.continuation?.finish(throwing: error)
         }
     }
 }

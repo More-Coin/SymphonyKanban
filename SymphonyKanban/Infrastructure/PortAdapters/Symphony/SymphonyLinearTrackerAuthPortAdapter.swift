@@ -36,7 +36,18 @@ public struct SymphonyLinearTrackerAuthPortAdapter:
         let session = try secureStore.loadSession()
         let pendingAuthorization = try secureStore.loadPendingAuthorization()
 
-        if pendingAuthorization != nil, session == nil {
+        if let pendingAuthorization, session == nil {
+            if pendingAuthorization.createdAt.addingTimeInterval(
+                LinearOAuthLoopbackConfiguration.timeoutInterval
+            ) <= Date() {
+                try? secureStore.clearPendingAuthorization()
+                return SymphonyTrackerAuthStatusContract(
+                    trackerKind: normalizedTrackerKind,
+                    state: .disconnected,
+                    statusMessage: "The previous OAuth callback window expired. Connect to Linear again."
+                )
+            }
+
             return SymphonyTrackerAuthStatusContract(
                 trackerKind: normalizedTrackerKind,
                 state: .connecting,

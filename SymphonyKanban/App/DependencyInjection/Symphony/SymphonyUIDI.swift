@@ -19,8 +19,14 @@ public enum SymphonyUIDI {
             launchTrackerAuthorizationURL: { url in
                 browserRuntime.open(url)
             },
+            prepareTrackerAuthorizationCallbackListener: {
+                try await callbackPort.prepareAuthorizationCallbackListener()
+            },
             awaitTrackerAuthorizationCallback: {
                 try await callbackPort.awaitAuthorizationCallback()
+            },
+            cancelTrackerAuthorizationCallbackListener: {
+                await callbackPort.cancelAuthorizationCallbackListener()
             },
             initialSelectedIssueIdentifier: "KAN-142"
         )

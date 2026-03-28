@@ -102,7 +102,12 @@ public struct SymphonyAuthController {
         for error: any Error
     ) -> String {
         if let structuredError = error as? any StructuredErrorProtocol {
-            return structuredError.message
+            guard let details = structuredError.details,
+                  !details.isEmpty else {
+                return structuredError.message
+            }
+
+            return "\(structuredError.message) \(details)"
         }
 
         return error.localizedDescription
