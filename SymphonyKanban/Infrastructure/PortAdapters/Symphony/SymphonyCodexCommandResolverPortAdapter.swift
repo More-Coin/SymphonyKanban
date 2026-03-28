@@ -7,6 +7,16 @@ public struct SymphonyCodexCommandResolverPortAdapter: SymphonyCodexCommandResol
         let standardError: String
     }
 
+    private struct ShellLookupAttempt: Equatable, Sendable {
+        let mode: ShellLookupMode
+        let result: CommandResult
+    }
+
+    private enum ShellLookupMode: CaseIterable, Equatable, Sendable {
+        case login
+        case interactiveLogin
+    }
+
     typealias CommandRunner = @Sendable (_ executableURL: URL, _ arguments: [String]) -> CommandResult
     typealias EnvironmentProvider = @Sendable () -> [String: String]
 
@@ -102,32 +112,11 @@ public struct SymphonyCodexCommandResolverPortAdapter: SymphonyCodexCommandResol
             )
         }
 
-        let lookupResult = runCommand(
-            URL(fileURLWithPath: commandLine.shellPath),
-            ["-lc", commandLine.shellLookupCommand]
-        )
-        guard lookupResult.terminationStatus == 0 else {
-            return SymphonyCodexCommandResolutionContract(
-                configuredCommand: configuredCommand,
-                effectiveCommand: configuredCommand,
-                executableName: commandLine.executableName,
-                executablePath: nil,
-                detailMessage: mergedDetailMessage(
-                    configurationDetailMessage,
-                    unresolvedExecutableMessage(
-                        executableToken: commandLine.executableToken,
-                        shellPath: commandLine.shellPath,
-                        commandResult: lookupResult
-                    )
-                )
-            )
-        }
-
-        let resolvedExecutablePath = commandLine.normalizedResolvedExecutablePath(
-            from: sanitizedOutput(lookupResult.standardOutput),
+        let shellLookup = resolveExecutablePath(
+            for: commandLine,
             currentWorkingDirectoryPath: currentWorkingDirectoryPath
         )
-        guard let resolvedExecutablePath else {
+        guard let resolvedExecutable = shellLookup.path else {
             return SymphonyCodexCommandResolutionContract(
                 configuredCommand: configuredCommand,
                 effectiveCommand: configuredCommand,
@@ -138,7 +127,8 @@ public struct SymphonyCodexCommandResolverPortAdapter: SymphonyCodexCommandResol
                     unresolvedExecutableMessage(
                         executableToken: commandLine.executableToken,
                         shellPath: commandLine.shellPath,
-                        commandResult: lookupResult
+                        lookupCommand: commandLine.shellLookupCommand,
+                        attempts: shellLookup.attempts
                     )
                 )
             )
@@ -146,9 +136,9 @@ public struct SymphonyCodexCommandResolverPortAdapter: SymphonyCodexCommandResol
 
         return SymphonyCodexCommandResolutionContract(
             configuredCommand: configuredCommand,
-            effectiveCommand: commandLine.reconstructedCommand(with: resolvedExecutablePath),
+            effectiveCommand: commandLine.reconstructedCommand(with: resolvedExecutable),
             executableName: commandLine.executableName,
-            executablePath: resolvedExecutablePath,
+            executablePath: resolvedExecutable,
             detailMessage: configurationDetailMessage
         )
     }
@@ -156,14 +146,15 @@ public struct SymphonyCodexCommandResolverPortAdapter: SymphonyCodexCommandResol
     private func unresolvedExecutableMessage(
         executableToken: String,
         shellPath: String,
-        commandResult: CommandResult
+        lookupCommand: String,
+        attempts: [ShellLookupAttempt]
     ) -> String {
-        let detail = combinedMessage(from: commandResult)
-        if detail.isEmpty {
-            return "The configured executable `\(executableToken)` could not be resolved from the login shell PATH using `\(shellPath)`."
+        let detail = combinedMessage(from: attempts)
+        if detail.isEmpty == false {
+            return "The configured executable `\(executableToken)` could not be resolved using `\(shellPath) -lc` or `\(shellPath) -ilc` with `\(lookupCommand)`. \(detail)"
         }
 
-        return "The configured executable `\(executableToken)` could not be resolved from the login shell PATH using `\(shellPath)`. \(detail)"
+        return "The configured executable `\(executableToken)` could not be resolved from the login shell PATH or the interactive login shell PATH using `\(shellPath)`."
     }
 
     private func mergedDetailMessage(
@@ -179,18 +170,78 @@ public struct SymphonyCodexCommandResolverPortAdapter: SymphonyCodexCommandResol
     }
 
     private func combinedMessage(
-        from result: CommandResult
+        from attempts: [ShellLookupAttempt]
     ) -> String {
-        let parts = [result.standardOutput, result.standardError]
-            .map(sanitizedOutput)
-            .filter { $0.isEmpty == false }
-        return parts.joined(separator: "\n")
+        let details: [String] = attempts.compactMap { attempt in
+            let message = [attempt.result.standardOutput, attempt.result.standardError]
+                .map(sanitizedOutput)
+                .filter { $0.isEmpty == false }
+                .joined(separator: "\n")
+            guard message.isEmpty == false else {
+                return nil
+            }
+
+            switch attempt.mode {
+            case .login:
+                return "Login shell lookup output:\n\(message)"
+            case .interactiveLogin:
+                return "Interactive login shell lookup output:\n\(message)"
+            }
+        }
+        return details.joined(separator: "\n\n")
     }
 
     private func sanitizedOutput(
         _ value: String
     ) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func resolveExecutablePath(
+        for commandLine: SymphonyCodexCommandLineModel,
+        currentWorkingDirectoryPath: String
+    ) -> (path: String?, attempts: [ShellLookupAttempt]) {
+        let executableURL = URL(fileURLWithPath: commandLine.shellPath)
+        var attempts: [ShellLookupAttempt] = []
+
+        for mode in ShellLookupMode.allCases {
+            let attempt = ShellLookupAttempt(
+                mode: mode,
+                result: runCommand(
+                    executableURL,
+                    lookupArguments(
+                        for: mode,
+                        lookupCommand: commandLine.shellLookupCommand
+                    )
+                )
+            )
+            attempts.append(attempt)
+
+            guard attempt.result.terminationStatus == 0 else {
+                continue
+            }
+
+            if let resolvedPath = commandLine.normalizedResolvedExecutablePath(
+                from: sanitizedOutput(attempt.result.standardOutput),
+                currentWorkingDirectoryPath: currentWorkingDirectoryPath
+            ) {
+                return (resolvedPath, attempts)
+            }
+        }
+
+        return (nil, attempts)
+    }
+
+    private func lookupArguments(
+        for mode: ShellLookupMode,
+        lookupCommand: String
+    ) -> [String] {
+        switch mode {
+        case .login:
+            return ["-lc", lookupCommand]
+        case .interactiveLogin:
+            return ["-ilc", lookupCommand]
+        }
     }
 
     private static func liveRunCommand(

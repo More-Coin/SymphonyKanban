@@ -1,9 +1,48 @@
+import Foundation
 import Testing
 @testable import SymphonyKanban
+
+private final class ShellInvocationRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recordedInvocations: [[String]] = []
+
+    func append(_ arguments: [String]) {
+        lock.lock()
+        recordedInvocations.append(arguments)
+        lock.unlock()
+    }
+
+    func snapshot() -> [[String]] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recordedInvocations
+    }
+}
+
+private final class ShellInvocationCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var currentValue = 0
+
+    func nextValue() -> Int {
+        lock.lock()
+        defer {
+            currentValue += 1
+            lock.unlock()
+        }
+        return currentValue
+    }
+
+    func value() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return currentValue
+    }
+}
 
 struct SymphonyCodexCommandResolverPortAdapterTests {
     @Test
     func resolveCodexCommandResolvesConfiguredExecutableFromLoginShellPath() {
+        let invocations = ShellInvocationRecorder()
         let adapter = SymphonyCodexCommandResolverPortAdapter(
             workflowLoaderPort: CodexCommandWorkflowLoaderSpy(
                 definition: SymphonyWorkflowDefinitionContract(
@@ -19,6 +58,7 @@ struct SymphonyCodexCommandResolverPortAdapterTests {
             ),
             environmentProvider: { ["SHELL": "/bin/zsh"] },
             runCommand: { executableURL, arguments in
+                invocations.append(arguments)
                 #expect(executableURL.path == "/bin/zsh")
                 #expect(arguments == ["-lc", "command -v 'codex'"])
                 return .init(
@@ -39,6 +79,7 @@ struct SymphonyCodexCommandResolverPortAdapterTests {
         #expect(result.executableName == "codex")
         #expect(result.executablePath == "/opt/homebrew/bin/codex")
         #expect(result.detailMessage == nil)
+        #expect(invocations.snapshot() == [["-lc", "command -v 'codex'"]])
     }
 
     @Test
@@ -101,6 +142,7 @@ struct SymphonyCodexCommandResolverPortAdapterTests {
 
     @Test
     func resolveCodexCommandReturnsDiagnosticWhenExecutableCannotBeResolvedFromLoginShell() {
+        let invocations = ShellInvocationRecorder()
         let adapter = SymphonyCodexCommandResolverPortAdapter(
             workflowLoaderPort: CodexCommandWorkflowLoaderSpy(),
             configResolverPort: CodexCommandConfigResolverSpy(
@@ -109,8 +151,9 @@ struct SymphonyCodexCommandResolverPortAdapterTests {
                 )
             ),
             environmentProvider: { ["SHELL": "/bin/zsh"] },
-            runCommand: { _, _ in
-                .init(
+            runCommand: { _, arguments in
+                invocations.append(arguments)
+                return .init(
                     terminationStatus: 1,
                     standardOutput: "",
                     standardError: "codex not found"
@@ -125,8 +168,57 @@ struct SymphonyCodexCommandResolverPortAdapterTests {
 
         #expect(result.effectiveCommand == "codex app-server")
         #expect(result.executablePath == nil)
-        #expect(result.detailMessage?.contains("login shell PATH") == true)
+        #expect(result.detailMessage?.contains("/bin/zsh -lc") == true)
+        #expect(result.detailMessage?.contains("/bin/zsh -ilc") == true)
         #expect(result.detailMessage?.contains("codex not found") == true)
+        #expect(
+            invocations.snapshot() == [
+                ["-lc", "command -v 'codex'"],
+                ["-ilc", "command -v 'codex'"]
+            ]
+        )
+    }
+
+    @Test
+    func resolveCodexCommandFallsBackToInteractiveLoginShellWhenLoginShellCannotResolveExecutable() {
+        let invocationCounter = ShellInvocationCounter()
+        let adapter = SymphonyCodexCommandResolverPortAdapter(
+            workflowLoaderPort: CodexCommandWorkflowLoaderSpy(),
+            configResolverPort: CodexCommandConfigResolverSpy(
+                serviceConfig: SymphonyCodexCommandTestSupport.makeServiceConfig(
+                    command: "codex app-server"
+                )
+            ),
+            environmentProvider: { ["SHELL": "/bin/zsh"] },
+            runCommand: { _, arguments in
+                let invocationIndex = invocationCounter.nextValue()
+                if invocationIndex == 0 {
+                    #expect(arguments == ["-lc", "command -v 'codex'"])
+                    return .init(
+                        terminationStatus: 1,
+                        standardOutput: "",
+                        standardError: "not found in login shell"
+                    )
+                }
+
+                #expect(arguments == ["-ilc", "command -v 'codex'"])
+                return .init(
+                    terminationStatus: 0,
+                    standardOutput: "/opt/homebrew/bin/codex\n",
+                    standardError: ""
+                )
+            }
+        )
+
+        let result = adapter.resolveCodexCommand(
+            currentWorkingDirectoryPath: "/tmp/project",
+            explicitWorkflowPath: nil
+        )
+
+        #expect(invocationCounter.value() == 2)
+        #expect(result.effectiveCommand == "/opt/homebrew/bin/codex app-server")
+        #expect(result.executablePath == "/opt/homebrew/bin/codex")
+        #expect(result.detailMessage == nil)
     }
 
     @Test

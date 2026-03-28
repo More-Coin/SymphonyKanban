@@ -435,6 +435,7 @@ fields locally if they want stricter startup checks.
 - `command` (string shell command)
   - Default: `codex app-server`
   - The runtime first resolves the first command token via the user's login shell using `command -v`.
+  - If the login shell does not expose the executable, the runtime retries with an interactive login shell so user PATH setup from files such as `.zshrc` is still honored.
   - The runtime then launches the effective resolved command via `bash -lc` in the workspace directory.
   - The launched process must speak a compatible app-server protocol over stdio.
 - `approval_policy` (Codex `AskForApproval` value)
@@ -926,7 +927,7 @@ Compatibility profile:
 Subprocess launch parameters:
 
 - Command: `codex.command`
-- Resolution: resolve the first `codex.command` token via login-shell `command -v`
+- Resolution: resolve the first `codex.command` token via login-shell `command -v`, then retry with an interactive login shell if the login shell cannot resolve it
 - Invocation: `bash -lc <effective resolved command>`
 - Working directory: workspace path
 - Stdout/stderr: separate streams
@@ -2022,7 +2023,7 @@ Unless otherwise noted, Sections 17.1 through 17.7 are `Core Conformance`. Bulle
 
 ### 17.5 Coding-Agent App-Server Client
 
-- Launch command resolves the first `codex.command` token via the login shell, then invokes `bash -lc <effective resolved command>` in the workspace cwd
+- Launch command resolves the first `codex.command` token via the login shell, retries with an interactive login shell if needed, then invokes `bash -lc <effective resolved command>` in the workspace cwd
 - Startup handshake sends `initialize`, `initialized`, `thread/start`, `turn/start`
 - `initialize` includes client identity/capabilities payload required by the targeted Codex
   app-server protocol
