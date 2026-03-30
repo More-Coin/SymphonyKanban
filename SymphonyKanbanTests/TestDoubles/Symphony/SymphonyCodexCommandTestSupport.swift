@@ -56,14 +56,14 @@ struct CodexCommandWorkflowLoaderSpy: SymphonyWorkflowLoaderPortProtocol {
     }
 
     func loadWorkflow(
-        using request: SymphonyWorkflowConfigurationRequestContract
+        using workspaceLocator: SymphonyWorkspaceLocatorContract
     ) throws -> SymphonyWorkflowDefinitionContract {
         if let loadError {
             throw loadError
         }
 
         return definition ?? SymphonyWorkflowDefinitionContract(
-            resolvedPath: request.explicitWorkflowPath ?? "\(request.currentWorkingDirectoryPath)/WORKFLOW.md",
+            resolvedPath: workspaceLocator.explicitWorkflowPath ?? "\(workspaceLocator.currentWorkingDirectoryPath)/WORKFLOW.md",
             config: [:],
             promptTemplate: "Prompt body"
         )

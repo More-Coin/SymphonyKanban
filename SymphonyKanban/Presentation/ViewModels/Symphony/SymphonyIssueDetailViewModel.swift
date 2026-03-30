@@ -3,6 +3,8 @@ public struct SymphonyIssueDetailViewModel: Equatable, Sendable {
     public let title: String
     public let subtitle: String
     public let stateLabel: String
+    public let stateKey: String
+    public let runtimeStatusLabel: String
     public let priorityLabel: String?
     public let labels: [String]
     public let descriptionText: String?
@@ -32,6 +34,8 @@ public struct SymphonyIssueDetailViewModel: Equatable, Sendable {
         title: String,
         subtitle: String,
         stateLabel: String,
+        stateKey: String,
+        runtimeStatusLabel: String,
         priorityLabel: String?,
         labels: [String],
         descriptionText: String?,
@@ -56,6 +60,8 @@ public struct SymphonyIssueDetailViewModel: Equatable, Sendable {
         self.title = title
         self.subtitle = subtitle
         self.stateLabel = stateLabel
+        self.stateKey = stateKey
+        self.runtimeStatusLabel = runtimeStatusLabel
         self.priorityLabel = priorityLabel
         self.labels = labels
         self.descriptionText = descriptionText

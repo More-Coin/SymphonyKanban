@@ -104,10 +104,10 @@ enum SymphonyOrchestratorRuntimeTestSupport {
         )
     }
 
-    static func makeStartupCommand() -> SymphonyStartupCommandContract {
-        SymphonyStartupCommandContract(
-            explicitWorkflowPath: "/tmp/WORKFLOW.md",
-            currentWorkingDirectoryPath: "/tmp"
+    static func makeWorkspaceLocator() -> SymphonyWorkspaceLocatorContract {
+        SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: "/tmp",
+            explicitWorkflowPath: "/tmp/WORKFLOW.md"
         )
     }
 
@@ -216,7 +216,7 @@ final class WorkflowLoaderSpy: @unchecked Sendable, SymphonyWorkflowLoaderPortPr
     }
 
     func loadWorkflow(
-        using _: SymphonyWorkflowConfigurationRequestContract
+        using _: SymphonyWorkspaceLocatorContract
     ) throws -> SymphonyWorkflowDefinitionContract {
         recorder?.append("preflight.load")
         return lock.withLock { definition }

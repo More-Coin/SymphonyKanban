@@ -8,6 +8,7 @@ import SwiftUI
 @MainActor
 public struct SymphonyNavigationRoutes: View {
     private let issueDetailController: SymphonyIssueDetailController
+    private let issueCatalogController: SymphonyIssueCatalogController
     private let authController: SymphonyAuthController
     private let codexConnectionController: SymphonyCodexConnectionController
     private let launchTrackerAuthorizationURL: @MainActor (URL) throws -> Void
@@ -23,6 +24,8 @@ public struct SymphonyNavigationRoutes: View {
     @State private var isRefreshing = false
     @State private var authViewModel = SymphonyAuthView.mockViewModel
     @State private var isCodexConnected = false
+    @State private var issueCatalogViewModel: SymphonyIssueCatalogViewModel?
+    @State private var issueLoadErrorMessage: String?
     @State private var codexConnectionViewModel = SymphonyCodexConnectionViewModel(
         isConnected: false,
         title: "Codex Login Required",
@@ -31,6 +34,7 @@ public struct SymphonyNavigationRoutes: View {
 
     public init(
         issueDetailController: SymphonyIssueDetailController,
+        issueCatalogController: SymphonyIssueCatalogController,
         authController: SymphonyAuthController,
         codexConnectionController: SymphonyCodexConnectionController,
         launchTrackerAuthorizationURL: @escaping @MainActor (URL) throws -> Void = { _ in },
@@ -44,6 +48,7 @@ public struct SymphonyNavigationRoutes: View {
         initialSelectedIssueIdentifier: String? = nil
     ) {
         self.issueDetailController = issueDetailController
+        self.issueCatalogController = issueCatalogController
         self.authController = authController
         self.codexConnectionController = codexConnectionController
         self.launchTrackerAuthorizationURL = launchTrackerAuthorizationURL
@@ -65,6 +70,9 @@ public struct SymphonyNavigationRoutes: View {
         } detail: {
             SymphonyContentRouterView(
                 selectedTab: selectedTab,
+                boardViewModel: issueCatalogViewModel?.boardViewModel ?? SymphonyKanbanBoardView.mockBoardViewModel,
+                issueListViewModel: issueCatalogViewModel?.listViewModel ?? SymphonyIssueListView.mockViewModel,
+                issueBannerMessage: issueLoadErrorMessage,
                 isRefreshing: isRefreshing,
                 onCardSelected: handleIssueSelected,
                 onRefreshTapped: handleRefresh,
@@ -75,7 +83,12 @@ public struct SymphonyNavigationRoutes: View {
         .inspector(isPresented: $showInspector) {
             SymphonyInspectorPanelView(
                 issueDetailView: selectedIssueIdentifier.map { id in
-                    AnyView(issueDetailController.run(issueIdentifier: id))
+                    AnyView(
+                        issueDetailController.run(
+                            issueIdentifier: id,
+                            issue: issueCatalogViewModel?.issuesByIdentifier[id]
+                        )
+                    )
                 }
             )
             .inspectorColumnWidth(min: 380, ideal: 480, max: 600)
@@ -87,6 +100,7 @@ public struct SymphonyNavigationRoutes: View {
         }
         .task {
             await refreshConnectionState()
+            await refreshIssueCatalog()
         }
         .sheet(isPresented: $showAuthSheet) {
             SymphonyAuthView(
@@ -141,8 +155,10 @@ public struct SymphonyNavigationRoutes: View {
     }
 
     private func handleRefresh() {
-        isRefreshing = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
+        Task {
+            isRefreshing = true
+            await refreshConnectionState()
+            await refreshIssueCatalog()
             withAnimation(SymphonyDesignStyle.Motion.smooth) {
                 isRefreshing = false
             }
@@ -169,6 +185,7 @@ public struct SymphonyNavigationRoutes: View {
                 let callback = try await awaitTrackerAuthorizationCallback()
                 authViewModel = await authController.completeAuthorizationViewModel(using: callback)
                 if authViewModel.linearService?.isConnected == true {
+                    await refreshIssueCatalog()
                     showAuthSheet = false
                 }
             } catch {
@@ -183,6 +200,7 @@ public struct SymphonyNavigationRoutes: View {
     ) {
         Task {
             authViewModel = await authController.disconnectViewModel()
+            await refreshIssueCatalog()
         }
     }
 
@@ -200,6 +218,32 @@ public struct SymphonyNavigationRoutes: View {
         await refreshAuthViewModel()
         await refreshCodexConnectionViewModel()
     }
+
+    private func refreshIssueCatalog() async {
+        do {
+            issueCatalogViewModel = try await issueCatalogController.queryViewModel(
+                selectedIssueIdentifier: selectedIssueIdentifier
+            )
+            issueLoadErrorMessage = nil
+        } catch {
+            issueLoadErrorMessage = structuredMessage(for: error)
+        }
+    }
+
+    private func structuredMessage(
+        for error: any Error
+    ) -> String {
+        if let structuredError = error as? any StructuredErrorProtocol {
+            guard let details = structuredError.details,
+                  !details.isEmpty else {
+                return structuredError.message
+            }
+
+            return "\(structuredError.message) \(details)"
+        }
+
+        return error.localizedDescription
+    }
 }
 
 #Preview {
@@ -207,6 +251,7 @@ public struct SymphonyNavigationRoutes: View {
         issueDetailController: SymphonyIssueDetailController(
             runtimeQueryService: SymphonyUIDI.makeRuntimeQueryService()
         ),
+        issueCatalogController: SymphonyUIDI.makeIssueCatalogController(),
         authController: SymphonyUIDI.makeAuthController(),
         codexConnectionController: SymphonyUIDI.makeCodexConnectionController(),
         initialSelectedIssueIdentifier: "KAN-142"

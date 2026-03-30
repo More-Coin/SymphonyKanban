@@ -2,7 +2,7 @@ import Foundation
 
 struct SymphonyServiceHostRuntime {
     typealias StartRuntime = @Sendable (
-        SymphonyStartupCommandContract,
+        SymphonyWorkspaceLocatorContract,
         SymphonyWorkflowConfigurationResultContract
     ) -> Void
     typealias KeepRunning = @Sendable () -> Int32
@@ -36,13 +36,10 @@ struct SymphonyServiceHostRuntime {
                 arguments: arguments,
                 currentWorkingDirectoryPath: FileManager.default.currentDirectoryPath
             )
-            let startupCommand = command.commandContract()
+            let workspaceLocator = command.workspaceLocatorContract()
 
             let workflowConfiguration = try resolveWorkflowConfigurationUseCase.resolveValidated(
-                SymphonyWorkflowConfigurationRequestContract(
-                    explicitWorkflowPath: startupCommand.explicitWorkflowPath,
-                    currentWorkingDirectoryPath: startupCommand.currentWorkingDirectoryPath
-                ),
+                workspaceLocator,
                 validateStartupConfigurationUseCase: validateStartupConfigurationUseCase
             )
             let trackerAuthStatus = try validateTrackerConnectionUseCase.validate(
@@ -54,7 +51,7 @@ struct SymphonyServiceHostRuntime {
             )
 
             _ = renderer.render(startupResult)
-            startRuntime(startupCommand, workflowConfiguration)
+            startRuntime(workspaceLocator, workflowConfiguration)
             return keepRunning()
         } catch {
             return renderer.renderError(error)

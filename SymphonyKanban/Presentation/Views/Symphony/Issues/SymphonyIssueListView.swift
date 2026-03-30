@@ -5,9 +5,9 @@ import SwiftUI
 /// Supports column sorting, status filtering, and search.
 
 public struct SymphonyIssueListView: View {
+    private let viewModel: SymphonyIssueListViewModel
     private let onIssueSelected: (String) -> Void
 
-    @State private var viewModel = SymphonyIssueListView.mockViewModel
     @State private var searchText = ""
     @State private var statusFilter = "All"
     @State private var sortColumn: SortColumn = .identifier
@@ -24,7 +24,11 @@ public struct SymphonyIssueListView: View {
         case tokens = "Tokens"
     }
 
-    public init(onIssueSelected: @escaping (String) -> Void) {
+    public init(
+        viewModel: SymphonyIssueListViewModel = Self.mockViewModel,
+        onIssueSelected: @escaping (String) -> Void
+    ) {
+        self.viewModel = viewModel
         self.onIssueSelected = onIssueSelected
     }
 
@@ -299,7 +303,7 @@ public struct SymphonyIssueListView: View {
 // MARK: - Mock Data
 
 extension SymphonyIssueListView {
-    static var mockViewModel: SymphonyIssueListViewModel {
+    public static var mockViewModel: SymphonyIssueListViewModel {
         SymphonyIssueListViewModel(rows: [
             SymphonyIssueListRowViewModel(
                 id: "issue-142", identifier: "KAN-142",

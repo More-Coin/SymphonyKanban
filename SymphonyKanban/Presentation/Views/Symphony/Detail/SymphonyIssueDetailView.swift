@@ -82,7 +82,7 @@ public struct SymphonyIssueDetailView: View {
                 VStack(alignment: .trailing, spacing: SymphonyDesignStyle.Spacing.xs) {
                     SymphonyStatusBadgeView(
                         viewModel.stateLabel,
-                        statusKey: viewModel.stateLabel.lowercased()
+                        statusKey: viewModel.stateKey
                     )
 
                     if let priorityLabel = viewModel.priorityLabel {
@@ -187,12 +187,12 @@ public struct SymphonyIssueDetailView: View {
             VStack(alignment: .leading, spacing: SymphonyDesignStyle.Spacing.md) {
                 // Status row
                 HStack(spacing: SymphonyDesignStyle.Spacing.md) {
-                    if viewModel.stateLabel.lowercased() == "running"
-                        || viewModel.stateLabel.lowercased() == "in_progress" {
+                    if viewModel.runtimeStatusLabel.lowercased() == "running"
+                        || viewModel.runtimeStatusLabel.lowercased() == "in_progress" {
                         SymphonyPulsingDotView(color: SymphonyDesignStyle.Accent.teal)
                     }
 
-                    Text("Status: \(viewModel.stateLabel)")
+                    Text("Status: \(viewModel.runtimeStatusLabel)")
                         .font(SymphonyDesignStyle.Typography.headline)
                         .foregroundStyle(SymphonyDesignStyle.Text.primary)
 
@@ -513,7 +513,9 @@ private struct CollapsibleSectionView<Content: View>: View {
             issueIdentifier: "KAN-142",
             title: "Rebuild Symphony dashboard pipeline",
             subtitle: "KAN-142",
-            stateLabel: "Running",
+            stateLabel: "Doing",
+            stateKey: "doing",
+            runtimeStatusLabel: "Running",
             priorityLabel: "Priority High",
             labels: ["symphony", "dashboard", "pipeline"],
             descriptionText: "Rebuild the dashboard presentation slice around controller, presenter, and page-level view models. Migrate from legacy SymphonyDashboardStyle to SymphonyDesignStyle.",
@@ -601,6 +603,8 @@ private struct CollapsibleSectionView<Content: View>: View {
             title: "Select an issue",
             subtitle: "Choose a running or queued issue from the dashboard to inspect its runtime context.",
             stateLabel: "Idle",
+            stateKey: "idle",
+            runtimeStatusLabel: "Idle",
             priorityLabel: nil,
             labels: [],
             descriptionText: nil,

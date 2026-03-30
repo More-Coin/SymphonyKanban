@@ -17,10 +17,10 @@ public struct SymphonyStartupCommandDTO {
         self.currentWorkingDirectoryPath = currentWorkingDirectoryPath
     }
 
-    public func commandContract() -> SymphonyStartupCommandContract {
-        SymphonyStartupCommandContract(
-            explicitWorkflowPath: explicitWorkflowPath,
-            currentWorkingDirectoryPath: currentWorkingDirectoryPath
+    public func workspaceLocatorContract() -> SymphonyWorkspaceLocatorContract {
+        SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: currentWorkingDirectoryPath,
+            explicitWorkflowPath: explicitWorkflowPath
         )
     }
 }

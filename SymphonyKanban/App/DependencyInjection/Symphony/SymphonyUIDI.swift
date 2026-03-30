@@ -13,6 +13,9 @@ public enum SymphonyUIDI {
             issueDetailController: SymphonyIssueDetailController(
                 runtimeQueryService: runtimeQueryService
             ),
+            issueCatalogController: makeIssueCatalogController(
+                environment: environment
+            ),
             authController: makeAuthController(
                 environment: environment
             ),
@@ -66,6 +69,38 @@ public enum SymphonyUIDI {
                 ),
                 disconnectTrackerAuthUseCase: DisconnectSymphonyTrackerUseCase(
                     trackerAuthPort: authPortAdapter
+                )
+            )
+        )
+    }
+
+    public static func makeIssueCatalogController(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> SymphonyIssueCatalogController {
+        let trackerAuthPortAdapter = SymphonyLinearTrackerAuthPortAdapter(
+            environment: environment
+        )
+        let resolveWorkflowConfigurationUseCase = ResolveSymphonyWorkflowConfigurationUseCase(
+            workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(
+                environment: environment
+            ),
+            configResolverPort: SymphonyConfigResolverPortAdapter(
+                environment: environment
+            )
+        )
+
+        return SymphonyIssueCatalogController(
+            issueCatalogService: SymphonyIssueCatalogService(
+                trackerConfigurationPort: SymphonyIssueCatalogTrackerConfigurationPortAdapter(
+                    resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase
+                ),
+                fetchIssuesUseCase: FetchSymphonyIssuesUseCase(
+                    issueTrackerReadPort: SymphonyFallbackIssueTrackerPortAdapter(
+                        trackerAuthPort: trackerAuthPortAdapter,
+                        liveGateway: SymphonyLinearIssueTrackerGateway(
+                            environment: environment
+                        )
+                    )
                 )
             )
         )

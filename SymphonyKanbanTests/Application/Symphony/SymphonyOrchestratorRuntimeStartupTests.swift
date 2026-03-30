@@ -47,7 +47,7 @@ struct SymphonyOrchestratorRuntimeStartupTests {
         )
 
         await service.start(
-            command: SymphonyOrchestratorRuntimeTestSupport.makeStartupCommand(),
+            workspaceLocator: SymphonyOrchestratorRuntimeTestSupport.makeWorkspaceLocator(),
             initialConfiguration: SymphonyOrchestratorRuntimeTestSupport.makeWorkflowConfiguration()
         )
 
@@ -105,7 +105,7 @@ struct SymphonyOrchestratorRuntimeStartupTests {
         )
 
         await service.start(
-            command: SymphonyOrchestratorRuntimeTestSupport.makeStartupCommand(),
+            workspaceLocator: SymphonyOrchestratorRuntimeTestSupport.makeWorkspaceLocator(),
             initialConfiguration: SymphonyOrchestratorRuntimeTestSupport.makeWorkflowConfiguration()
         )
 

@@ -16,13 +16,10 @@ public struct SymphonyStartupService {
     }
 
     public func execute(
-        _ command: SymphonyStartupCommandContract
+        _ workspaceLocator: SymphonyWorkspaceLocatorContract
     ) throws -> SymphonyStartupResultContract {
         let configuration = try resolveWorkflowConfigurationUseCase.resolveValidated(
-            SymphonyWorkflowConfigurationRequestContract(
-                explicitWorkflowPath: command.explicitWorkflowPath,
-                currentWorkingDirectoryPath: command.currentWorkingDirectoryPath
-            ),
+            workspaceLocator,
             validateStartupConfigurationUseCase: validateStartupConfigurationUseCase
         )
         let trackerAuthStatus = try validateTrackerConnectionUseCase.validate(

@@ -15,9 +15,9 @@ public struct SymphonyWorkflowLoaderPortAdapter: SymphonyWorkflowLoaderPortProto
     }
 
     public func loadWorkflow(
-        using request: SymphonyWorkflowConfigurationRequestContract
+        using workspaceLocator: SymphonyWorkspaceLocatorContract
     ) throws -> SymphonyWorkflowDefinitionContract {
-        let resolvedPath = workflowPathModel.fromContract(request)
+        let resolvedPath = workflowPathModel.fromContract(workspaceLocator)
         var isDirectory: ObjCBool = false
 
         guard fileManager.fileExists(atPath: resolvedPath, isDirectory: &isDirectory),

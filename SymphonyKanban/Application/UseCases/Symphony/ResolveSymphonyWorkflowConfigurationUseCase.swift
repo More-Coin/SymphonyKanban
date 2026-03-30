@@ -11,9 +11,9 @@ public struct ResolveSymphonyWorkflowConfigurationUseCase {
     }
 
     public func resolve(
-        _ request: SymphonyWorkflowConfigurationRequestContract
+        _ workspaceLocator: SymphonyWorkspaceLocatorContract
     ) throws -> SymphonyWorkflowConfigurationResultContract {
-        let workflowDefinition = try loadWorkflowDefinition(using: request)
+        let workflowDefinition = try loadWorkflowDefinition(using: workspaceLocator)
         let serviceConfig = configResolverPort.resolveConfig(from: workflowDefinition)
 
         return SymphonyWorkflowConfigurationResultContract(
@@ -23,10 +23,10 @@ public struct ResolveSymphonyWorkflowConfigurationUseCase {
     }
 
     public func resolveValidated(
-        _ request: SymphonyWorkflowConfigurationRequestContract,
+        _ workspaceLocator: SymphonyWorkspaceLocatorContract,
         validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase
     ) throws -> SymphonyWorkflowConfigurationResultContract {
-        let workflowDefinition = try loadWorkflowDefinition(using: request)
+        let workflowDefinition = try loadWorkflowDefinition(using: workspaceLocator)
         let serviceConfig = configResolverPort.resolveConfig(from: workflowDefinition)
         let validatedServiceConfig = try validateStartupConfigurationUseCase.validate(serviceConfig)
 
@@ -37,8 +37,8 @@ public struct ResolveSymphonyWorkflowConfigurationUseCase {
     }
 
     private func loadWorkflowDefinition(
-        using request: SymphonyWorkflowConfigurationRequestContract
+        using workspaceLocator: SymphonyWorkspaceLocatorContract
     ) throws -> SymphonyWorkflowDefinitionContract {
-        try workflowLoaderPort.loadWorkflow(using: request)
+        try workflowLoaderPort.loadWorkflow(using: workspaceLocator)
     }
 }

@@ -10,6 +10,10 @@ public enum SymphonyWorkspaceInfrastructureError: StructuredErrorProtocol, Local
     case hookFailed(kind: String, workspacePath: String, details: String)
     case hookTimedOut(kind: String, workspacePath: String, timeoutMs: Int)
     case invalidWorkspaceCWD(expected: String, actual: String)
+    case bindingStorageUnavailable(details: String)
+    case bindingLoadFailed(path: String, details: String)
+    case bindingSaveFailed(path: String, details: String)
+    case bindingRemovalFailed(path: String, details: String)
 
     public var code: String {
         switch self {
@@ -31,6 +35,14 @@ public enum SymphonyWorkspaceInfrastructureError: StructuredErrorProtocol, Local
             return "symphony.workspace.hook_timed_out"
         case .invalidWorkspaceCWD:
             return "symphony.workspace.invalid_workspace_cwd"
+        case .bindingStorageUnavailable:
+            return "symphony.workspace.binding_storage_unavailable"
+        case .bindingLoadFailed:
+            return "symphony.workspace.binding_load_failed"
+        case .bindingSaveFailed:
+            return "symphony.workspace.binding_save_failed"
+        case .bindingRemovalFailed:
+            return "symphony.workspace.binding_removal_failed"
         }
     }
 
@@ -54,6 +66,14 @@ public enum SymphonyWorkspaceInfrastructureError: StructuredErrorProtocol, Local
             return "A workspace lifecycle hook timed out."
         case .invalidWorkspaceCWD:
             return "The coding-agent launch directory does not match the validated workspace path."
+        case .bindingStorageUnavailable:
+            return "The workspace-binding storage location is unavailable."
+        case .bindingLoadFailed:
+            return "Saved workspace bindings could not be loaded."
+        case .bindingSaveFailed:
+            return "The workspace binding could not be saved."
+        case .bindingRemovalFailed:
+            return "The workspace binding could not be removed."
         }
     }
 
@@ -62,13 +82,17 @@ public enum SymphonyWorkspaceInfrastructureError: StructuredErrorProtocol, Local
         case .invalidWorkspaceRoot,
              .workspacePathOutsideRoot,
              .workspaceLocationNotDirectory,
-             .invalidWorkspaceCWD:
+             .invalidWorkspaceCWD,
+             .bindingStorageUnavailable:
             return false
         case .workspaceCreationFailed,
              .workspacePreparationFailed,
              .workspaceRemovalFailed,
              .hookFailed,
-             .hookTimedOut:
+             .hookTimedOut,
+             .bindingLoadFailed,
+             .bindingSaveFailed,
+             .bindingRemovalFailed:
             return true
         }
     }
@@ -91,6 +115,12 @@ public enum SymphonyWorkspaceInfrastructureError: StructuredErrorProtocol, Local
             return "Hook: \(kind). Workspace: \(workspacePath). Timeout: \(timeoutMs) ms."
         case .invalidWorkspaceCWD(let expected, let actual):
             return "Expected: \(expected). Actual: \(actual)"
+        case .bindingStorageUnavailable(let details):
+            return details
+        case .bindingLoadFailed(let path, let details),
+             .bindingSaveFailed(let path, let details),
+             .bindingRemovalFailed(let path, let details):
+            return "Path: \(path). \(details)"
         }
     }
 

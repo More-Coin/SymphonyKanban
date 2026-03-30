@@ -17,11 +17,11 @@ public struct SymphonyDispatchPreflightValidationService {
     }
 
     public func validateForDispatch(
-        _ request: SymphonyWorkflowConfigurationRequestContract
+        _ workspaceLocator: SymphonyWorkspaceLocatorContract
     ) -> SymphonyDispatchPreflightOutcomeContract {
         do {
             let configuration = try resolveWorkflowConfigurationUseCase.resolveValidated(
-                request,
+                workspaceLocator,
                 validateStartupConfigurationUseCase: validateStartupConfigurationUseCase
             )
             _ = try validateTrackerConnectionUseCase.validate(

@@ -19,7 +19,7 @@ public actor SymphonyOrchestratorRuntimeService {
     private let runtimeStatusSinkPort: (any SymphonyRuntimeStatusSinkPortProtocol)?
     private let workflowReloadMonitorPort: (any SymphonyWorkflowReloadMonitorPortProtocol)?
 
-    private var startupCommand: SymphonyStartupCommandContract?
+    private var startupWorkspaceLocator: SymphonyWorkspaceLocatorContract?
     private var workflowConfiguration: SymphonyWorkflowConfigurationResultContract?
     private var lastKnownGoodWorkflowConfiguration: SymphonyWorkflowConfigurationResultContract?
     private var state: RuntimeState = SymphonyRuntimeStateContract(
@@ -91,7 +91,7 @@ public actor SymphonyOrchestratorRuntimeService {
     }
 
     public func start(
-        command: SymphonyStartupCommandContract,
+        workspaceLocator: SymphonyWorkspaceLocatorContract,
         initialConfiguration: SymphonyWorkflowConfigurationResultContract
     ) async {
         guard !started else {
@@ -99,7 +99,7 @@ public actor SymphonyOrchestratorRuntimeService {
         }
 
         started = true
-        startupCommand = command
+        startupWorkspaceLocator = workspaceLocator
         workflowConfiguration = initialConfiguration
         lastKnownGoodWorkflowConfiguration = initialConfiguration
         state = Self.emptyState(using: initialConfiguration.serviceConfig)
@@ -186,8 +186,8 @@ public actor SymphonyOrchestratorRuntimeService {
     }
 
     private func runDispatchPhase() async -> (outcome: String, message: String?, dispatchedCount: Int) {
-        guard startupCommand != nil else {
-            return ("skipped", "Missing startup command context.", 0)
+        guard startupWorkspaceLocator != nil else {
+            return ("skipped", "Missing startup workspace context.", 0)
         }
 
         switch refreshWorkflowConfiguration(reason: "dispatch") {
@@ -852,15 +852,12 @@ public actor SymphonyOrchestratorRuntimeService {
         )
     }
 
-    private func workflowConfigurationRequest() -> SymphonyWorkflowConfigurationRequestContract? {
-        guard let startupCommand else {
+    private func workflowConfigurationRequest() -> SymphonyWorkspaceLocatorContract? {
+        guard let startupWorkspaceLocator else {
             return nil
         }
 
-        return SymphonyWorkflowConfigurationRequestContract(
-            explicitWorkflowPath: startupCommand.explicitWorkflowPath,
-            currentWorkingDirectoryPath: startupCommand.currentWorkingDirectoryPath
-        )
+        return startupWorkspaceLocator
     }
 
     private func emit(

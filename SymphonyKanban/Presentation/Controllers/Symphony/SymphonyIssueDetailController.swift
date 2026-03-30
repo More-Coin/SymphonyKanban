@@ -15,11 +15,21 @@ public struct SymphonyIssueDetailController {
     }
 
     public func run(issueIdentifier: String? = nil) -> SymphonyIssueDetailView {
+        run(issueIdentifier: issueIdentifier, issue: nil)
+    }
+
+    public func run(
+        issueIdentifier: String? = nil,
+        issue: SymphonyIssue? = nil
+    ) -> SymphonyIssueDetailView {
         let request = SymphonyIssueDetailRequestDTO(issueIdentifier: issueIdentifier)
         let result = runtimeQueryService.queryIssueDetailSnapshot(
             issueIdentifier: request.queryParams().issueIdentifier ?? ""
         )
-        let viewModel = presenter.present(result)
+        let viewModel = presenter.present(
+            result,
+            issue: issue
+        )
         return renderer.render(viewModel)
     }
 }

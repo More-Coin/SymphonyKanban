@@ -5,6 +5,9 @@ import SwiftUI
 
 public struct SymphonyContentRouterView: View {
     let selectedTab: SymphonyTabViewModel
+    let boardViewModel: SymphonyKanbanBoardViewModel
+    let issueListViewModel: SymphonyIssueListViewModel
+    let issueBannerMessage: String?
     let isRefreshing: Bool
     let onCardSelected: (String) -> Void
     let onRefreshTapped: () -> Void
@@ -14,12 +17,18 @@ public struct SymphonyContentRouterView: View {
 
     public init(
         selectedTab: SymphonyTabViewModel,
+        boardViewModel: SymphonyKanbanBoardViewModel,
+        issueListViewModel: SymphonyIssueListViewModel,
+        issueBannerMessage: String? = nil,
         isRefreshing: Bool,
         onCardSelected: @escaping (String) -> Void,
         onRefreshTapped: @escaping () -> Void,
         onDismissInspector: @escaping () -> Void = {}
     ) {
         self.selectedTab = selectedTab
+        self.boardViewModel = boardViewModel
+        self.issueListViewModel = issueListViewModel
+        self.issueBannerMessage = issueBannerMessage
         self.isRefreshing = isRefreshing
         self.onCardSelected = onCardSelected
         self.onRefreshTapped = onRefreshTapped
@@ -30,22 +39,36 @@ public struct SymphonyContentRouterView: View {
         ZStack {
             SymphonyDesignStyle.Background.secondary.ignoresSafeArea()
 
-            switch selectedTab {
-            case .board:
-                SymphonyKanbanBoardView(onCardSelected: onCardSelected, onBackgroundTapped: onDismissInspector)
+            VStack(spacing: 0) {
+                if let issueBannerMessage,
+                   issueBannerMessage.isEmpty == false {
+                    issueBanner(issueBannerMessage)
+                }
+
+                switch selectedTab {
+                case .board:
+                    SymphonyKanbanBoardView(
+                        viewModel: boardViewModel,
+                        onCardSelected: onCardSelected,
+                        onBackgroundTapped: onDismissInspector
+                    )
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
 
-            case .list:
-                SymphonyIssueListView(onIssueSelected: onCardSelected)
+                case .list:
+                    SymphonyIssueListView(
+                        viewModel: issueListViewModel,
+                        onIssueSelected: onCardSelected
+                    )
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
 
-            case .timeline:
-                SymphonyActivityTimelineView()
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                case .timeline:
+                    SymphonyActivityTimelineView()
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
 
-            case .agents:
-                SymphonyAgentManagementView()
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                case .agents:
+                    SymphonyAgentManagementView()
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
             }
         }
         .animation(SymphonyDesignStyle.Motion.smooth, value: selectedTab)
@@ -59,6 +82,23 @@ public struct SymphonyContentRouterView: View {
                 }
                 .disabled(isRefreshing)
             }
+        }
+    }
+
+    private func issueBanner(_ message: String) -> some View {
+        HStack(spacing: SymphonyDesignStyle.Spacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(SymphonyDesignStyle.Accent.coral)
+            Text(message)
+                .font(SymphonyDesignStyle.Typography.caption)
+                .foregroundStyle(SymphonyDesignStyle.Text.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, SymphonyDesignStyle.Spacing.lg)
+        .padding(.vertical, SymphonyDesignStyle.Spacing.sm)
+        .background(SymphonyDesignStyle.Background.tertiary)
+        .overlay(alignment: .bottom) {
+            SymphonyDividerView()
         }
     }
 }

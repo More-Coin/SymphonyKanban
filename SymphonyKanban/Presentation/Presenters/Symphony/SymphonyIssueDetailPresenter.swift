@@ -14,28 +14,74 @@ public struct SymphonyIssueDetailPresenter {
     }
 
     public func present(
-        _ result: SymphonyRuntimeIssueDetailQueryResultContract
+        _ result: SymphonyRuntimeIssueDetailQueryResultContract,
+        issue: SymphonyIssue? = nil
     ) -> SymphonyIssueDetailViewModel {
         guard let snapshot = result.snapshot else {
             let hasSelection = result.issueIdentifier.isEmpty == false
+            guard let issue else {
+                return SymphonyIssueDetailViewModel(
+                    issueIdentifier: result.issueIdentifier,
+                    title: hasSelection ? result.issueIdentifier : "Select an issue",
+                    subtitle: hasSelection
+                        ? "No Symphony runtime detail is available for this issue yet."
+                        : "Choose a running or queued issue from the dashboard to inspect its runtime context.",
+                    stateLabel: "Idle",
+                    stateKey: "idle",
+                    runtimeStatusLabel: "Idle",
+                    priorityLabel: nil,
+                    labels: [],
+                    descriptionText: nil,
+                    metadataLines: [],
+                    attemptsLabel: "No attempts recorded",
+                    generatedAtLabel: "No runtime snapshot",
+                    runtimeViewModel: nil,
+                    workspaceViewModel: nil,
+                    logsViewModel: SymphonyLogsViewModel(
+                        title: "Logs",
+                        subtitle: "Runtime logs appear here when a session is active.",
+                        emptyState: "No log files are attached to this issue.",
+                        entries: []
+                    ),
+                    recentEventsSectionTitle: "Recent Events",
+                    recentEventsEmptyState: "No recent events are available.",
+                    recentEventRows: [],
+                    lastErrorTitle: nil,
+                    lastErrorMessage: nil,
+                    lastErrorDetailLines: [],
+                    trackedSectionTitle: "Tracked Fields",
+                    trackedFieldLines: [],
+                    emptyStateTitle: hasSelection ? "No Runtime Detail Yet" : "Issue Detail",
+                    emptyStateMessage: hasSelection
+                        ? "This issue has not produced a runtime snapshot yet."
+                        : "Pick an issue from the dashboard to view runtime, workspace, logs, and event details."
+                )
+            }
+
+            let metadataLines = metadataLines(
+                branchName: issue.branchName,
+                url: issue.url,
+                createdAt: issue.createdAt,
+                updatedAt: issue.updatedAt
+            )
             return SymphonyIssueDetailViewModel(
-                issueIdentifier: result.issueIdentifier,
-                title: hasSelection ? result.issueIdentifier : "Select an issue",
-                subtitle: hasSelection
-                    ? "No Symphony runtime detail is available for this issue yet."
-                    : "Choose a running or queued issue from the dashboard to inspect its runtime context.",
-                stateLabel: "Idle",
-                priorityLabel: nil,
-                labels: [],
-                descriptionText: nil,
-                metadataLines: [],
+                issueIdentifier: issue.identifier,
+                title: issue.title,
+                subtitle: "No local runtime session is active for this issue.",
+                stateLabel: issue.state,
+                stateKey: normalizedStateKey(issue.state),
+                runtimeStatusLabel: "Idle",
+                priorityLabel: formatPriority(issue.priority),
+                labels: issue.labels,
+                descriptionText: issue.description,
+                metadataLines: metadataLines,
                 attemptsLabel: "No attempts recorded",
-                generatedAtLabel: "No runtime snapshot",
+                generatedAtLabel: "Issue metadata only",
                 runtimeViewModel: nil,
                 workspaceViewModel: nil,
                 logsViewModel: SymphonyLogsViewModel(
                     title: "Logs",
-                    subtitle: "Runtime logs appear here when a session is active.",
+                    subtitle: "Runtime logs appear here when a local session is active.",
                     emptyState: "No log files are attached to this issue.",
                     entries: []
                 ),
@@ -47,20 +93,25 @@ public struct SymphonyIssueDetailPresenter {
                 lastErrorDetailLines: [],
                 trackedSectionTitle: "Tracked Fields",
                 trackedFieldLines: [],
-                emptyStateTitle: hasSelection ? "No Runtime Detail Yet" : "Issue Detail",
-                emptyStateMessage: hasSelection
-                    ? "This issue has not produced a runtime snapshot yet."
-                    : "Pick an issue from the dashboard to view runtime, workspace, logs, and event details."
+                emptyStateTitle: nil,
+                emptyStateMessage: nil
             )
         }
 
+        let issueIdentifier = issue?.identifier ?? snapshot.issue.issueIdentifier
+        let title = issue?.title ?? snapshot.issue.title
+        let descriptionText = issue?.description ?? snapshot.issue.description
+        let labels = issue?.labels ?? snapshot.issue.labels
+        let priority = issue?.priority ?? snapshot.issue.priority
+        let trackerState = issue?.state ?? snapshot.issue.state
         let metadataLines = [
-            "Status: \(snapshot.status)",
-            snapshot.issue.branchName.map { "Branch: \($0)" },
-            snapshot.issue.url.map { "URL: \($0)" },
-            snapshot.issue.createdAt.map { "Created \(dateFormatter.string(from: $0))" },
-            snapshot.issue.updatedAt.map { "Updated \(dateFormatter.string(from: $0))" }
-        ].compactMap { $0 }
+            "Runtime Status: \(snapshot.status)"
+        ] + metadataLines(
+            branchName: issue?.branchName ?? snapshot.issue.branchName,
+            url: issue?.url ?? snapshot.issue.url,
+            createdAt: issue?.createdAt ?? snapshot.issue.createdAt,
+            updatedAt: issue?.updatedAt ?? snapshot.issue.updatedAt
+        )
 
         let runtimeViewModel = snapshot.running.map { running in
             SymphonyIssueRuntimeViewModel(
@@ -121,13 +172,15 @@ public struct SymphonyIssueDetailPresenter {
         } ?? []
 
         return SymphonyIssueDetailViewModel(
-            issueIdentifier: snapshot.issue.issueIdentifier,
-            title: snapshot.issue.title,
-            subtitle: snapshot.issue.issueIdentifier,
-            stateLabel: snapshot.status,
-            priorityLabel: formatPriority(snapshot.issue.priority),
-            labels: snapshot.issue.labels,
-            descriptionText: snapshot.issue.description,
+            issueIdentifier: issueIdentifier,
+            title: title,
+            subtitle: issueIdentifier,
+            stateLabel: trackerState,
+            stateKey: normalizedStateKey(trackerState),
+            runtimeStatusLabel: snapshot.status,
+            priorityLabel: formatPriority(priority),
+            labels: labels,
+            descriptionText: descriptionText,
             metadataLines: metadataLines,
             attemptsLabel: attemptsLabel(for: snapshot.attempts),
             generatedAtLabel: "Snapshot \(relativeDateFormatter.localizedString(for: snapshot.generatedAt, relativeTo: snapshot.generatedAt.addingTimeInterval(90)))",
@@ -145,6 +198,20 @@ public struct SymphonyIssueDetailPresenter {
             emptyStateTitle: nil,
             emptyStateMessage: nil
         )
+    }
+
+    private func metadataLines(
+        branchName: String?,
+        url: String?,
+        createdAt: Date?,
+        updatedAt: Date?
+    ) -> [String] {
+        [
+            branchName.map { "Branch: \($0)" },
+            url.map { "URL: \($0)" },
+            createdAt.map { "Created \(dateFormatter.string(from: $0))" },
+            updatedAt.map { "Updated \(dateFormatter.string(from: $0))" }
+        ].compactMap { $0 }
     }
 
     public static func makeDateFormatter() -> DateFormatter {
@@ -205,6 +272,14 @@ public struct SymphonyIssueDetailPresenter {
         default:
             return "Priority \(priority)"
         }
+    }
+
+    private func normalizedStateKey(_ state: String) -> String {
+        state
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "-", with: "_")
+            .replacingOccurrences(of: " ", with: "_")
     }
 
     private func stringify(configValue: SymphonyConfigValueContract) -> String {

@@ -6,9 +6,9 @@ struct SymphonyWorkflowResolverPortAdapterTests {
     @Test
     func missingWorkflowFileReturnsTypedError() {
         let useCase = SymphonyWorkflowConfigurationTestSupport.makeUseCase()
-        let request = SymphonyWorkflowConfigurationRequestContract(
-            explicitWorkflowPath: "/path/that/does/not/exist/WORKFLOW.md",
-            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path
+        let request = SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+            explicitWorkflowPath: "/path/that/does/not/exist/WORKFLOW.md"
         )
 
         do {
@@ -41,9 +41,9 @@ struct SymphonyWorkflowResolverPortAdapterTests {
         )
 
         let useCase = SymphonyWorkflowConfigurationTestSupport.makeUseCase()
-        let request = SymphonyWorkflowConfigurationRequestContract(
-            explicitWorkflowPath: fileURL.path,
-            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path
+        let request = SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+            explicitWorkflowPath: fileURL.path
         )
 
         do {
@@ -76,9 +76,9 @@ struct SymphonyWorkflowResolverPortAdapterTests {
         )
 
         let useCase = SymphonyWorkflowConfigurationTestSupport.makeUseCase()
-        let request = SymphonyWorkflowConfigurationRequestContract(
-            explicitWorkflowPath: fileURL.path,
-            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path
+        let request = SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+            explicitWorkflowPath: fileURL.path
         )
 
         do {
@@ -111,10 +111,10 @@ struct SymphonyWorkflowResolverPortAdapterTests {
 
         let useCase = SymphonyWorkflowConfigurationTestSupport.makeUseCase()
         let result = try useCase.resolve(
-            SymphonyWorkflowConfigurationRequestContract(
-                explicitWorkflowPath: fileURL.path,
-                currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path
-            )
+            SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+            explicitWorkflowPath: fileURL.path
+        )
         )
 
         let defaultWorkspaceRoot = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -162,10 +162,10 @@ struct SymphonyWorkflowResolverPortAdapterTests {
 
         let useCase = SymphonyWorkflowConfigurationTestSupport.makeUseCase()
         let result = try useCase.resolve(
-            SymphonyWorkflowConfigurationRequestContract(
-                explicitWorkflowPath: fileURL.path,
-                currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path
-            )
+            SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+            explicitWorkflowPath: fileURL.path
+        )
         )
 
         #expect(result.serviceConfig.tracker.kind == "jira")
@@ -236,10 +236,10 @@ struct SymphonyWorkflowResolverPortAdapterTests {
             ]
         )
         let result = try useCase.resolve(
-            SymphonyWorkflowConfigurationRequestContract(
-                explicitWorkflowPath: fileURL.path,
-                currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path
-            )
+            SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+            explicitWorkflowPath: fileURL.path
+        )
         )
 
         #expect(result.serviceConfig.tracker.kind == "linear")
@@ -271,7 +271,7 @@ struct SymphonyWorkflowResolverPortAdapterTests {
         #expect(result.serviceConfig.codex.threadSandbox == "workspace-write")
         #expect(
             result.serviceConfig.codex.turnSandboxPolicy ==
-                .object([
+                SymphonyConfigValueContract.object([
                     "mode": .string("workspace-write"),
                     "network_access": .string("restricted")
                 ])
@@ -309,10 +309,10 @@ struct SymphonyWorkflowResolverPortAdapterTests {
             ]
         )
         let result = try useCase.resolve(
-            SymphonyWorkflowConfigurationRequestContract(
-                explicitWorkflowPath: fileURL.path,
-                currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path
-            )
+            SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+            explicitWorkflowPath: fileURL.path
+        )
         )
 
         #expect(result.serviceConfig.tracker.endpoint == "$LINEAR_ENDPOINT")
@@ -340,10 +340,10 @@ struct SymphonyWorkflowResolverPortAdapterTests {
 
         let useCase = SymphonyWorkflowConfigurationTestSupport.makeUseCase()
         let result = try useCase.resolve(
-            SymphonyWorkflowConfigurationRequestContract(
-                explicitWorkflowPath: fileURL.path,
-                currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path
-            )
+            SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+            explicitWorkflowPath: fileURL.path
+        )
         )
 
         #expect(result.serviceConfig.workspace.rootPath == "symphony_workspaces")
@@ -366,10 +366,10 @@ struct SymphonyWorkflowResolverPortAdapterTests {
 
         let useCase = SymphonyWorkflowConfigurationTestSupport.makeUseCase()
         let result = try useCase.resolve(
-            SymphonyWorkflowConfigurationRequestContract(
-                explicitWorkflowPath: fileURL.path,
-                currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path
-            )
+            SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+            explicitWorkflowPath: fileURL.path
+        )
         )
 
         let expectedPath = URL(fileURLWithPath: NSHomeDirectory())
@@ -399,10 +399,10 @@ struct SymphonyWorkflowResolverPortAdapterTests {
             ]
         )
         let result = try useCase.resolve(
-            SymphonyWorkflowConfigurationRequestContract(
-                explicitWorkflowPath: fileURL.path,
-                currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path
-            )
+            SymphonyWorkspaceLocatorContract(
+            currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+            explicitWorkflowPath: fileURL.path
+        )
         )
 
         #expect(result.serviceConfig.tracker.kind == "linear")

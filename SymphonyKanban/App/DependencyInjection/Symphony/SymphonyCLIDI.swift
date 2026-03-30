@@ -82,10 +82,10 @@ struct SymphonyCLIDI {
             validateStartupConfigurationUseCase: hostStartupComponents.validateStartupConfigurationUseCase,
             validateTrackerConnectionUseCase: hostStartupComponents.validateTrackerConnectionUseCase,
             renderer: SymphonyStartupRenderer(),
-            startRuntime: { command, workflowConfiguration in
+            startRuntime: { workspaceLocator, workflowConfiguration in
                 Task {
                     await runtimeService.start(
-                        command: command,
+                        workspaceLocator: workspaceLocator,
                         initialConfiguration: workflowConfiguration
                     )
                 }

@@ -4,14 +4,14 @@ struct SymphonyWorkflowPathModel {
     let environment: [String: String]
 
     func fromContract(
-        _ request: SymphonyWorkflowConfigurationRequestContract
+        _ workspaceLocator: SymphonyWorkspaceLocatorContract
     ) -> String {
-        if let explicitWorkflowPath = request.explicitWorkflowPath,
+        if let explicitWorkflowPath = workspaceLocator.explicitWorkflowPath,
            !explicitWorkflowPath.isEmpty {
             return normalizedPath(from: explicitWorkflowPath)
         }
 
-        let currentWorkingDirectory = normalizedPath(from: request.currentWorkingDirectoryPath)
+        let currentWorkingDirectory = normalizedPath(from: workspaceLocator.currentWorkingDirectoryPath)
         return URL(fileURLWithPath: currentWorkingDirectory)
             .appendingPathComponent("WORKFLOW.md")
             .standardizedFileURL

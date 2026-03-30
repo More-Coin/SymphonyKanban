@@ -60,9 +60,9 @@ public struct SymphonyCodexCommandResolverPortAdapter: SymphonyCodexCommandResol
 
         do {
             let definition = try workflowLoaderPort.loadWorkflow(
-                using: SymphonyWorkflowConfigurationRequestContract(
-                    explicitWorkflowPath: explicitWorkflowPath,
-                    currentWorkingDirectoryPath: currentWorkingDirectoryPath
+                using: SymphonyWorkspaceLocatorContract(
+                    currentWorkingDirectoryPath: currentWorkingDirectoryPath,
+                    explicitWorkflowPath: explicitWorkflowPath
                 )
             )
             let serviceConfig = configResolverPort.resolveConfig(from: definition)

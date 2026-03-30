@@ -1,5 +1,5 @@
 public protocol SymphonyWorkflowLoaderPortProtocol {
     func loadWorkflow(
-        using request: SymphonyWorkflowConfigurationRequestContract
+        using workspaceLocator: SymphonyWorkspaceLocatorContract
     ) throws -> SymphonyWorkflowDefinitionContract
 }

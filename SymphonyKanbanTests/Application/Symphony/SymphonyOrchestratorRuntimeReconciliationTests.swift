@@ -43,7 +43,7 @@ struct SymphonyOrchestratorRuntimeReconciliationTests {
         )
 
         await service.start(
-            command: SymphonyOrchestratorRuntimeTestSupport.makeStartupCommand(),
+            workspaceLocator: SymphonyOrchestratorRuntimeTestSupport.makeWorkspaceLocator(),
             initialConfiguration: SymphonyOrchestratorRuntimeTestSupport.makeWorkflowConfiguration()
         )
         await scheduler.runNext()
@@ -92,7 +92,7 @@ struct SymphonyOrchestratorRuntimeReconciliationTests {
         )
 
         await enabledService.start(
-            command: SymphonyOrchestratorRuntimeTestSupport.makeStartupCommand(),
+            workspaceLocator: SymphonyOrchestratorRuntimeTestSupport.makeWorkspaceLocator(),
             initialConfiguration: SymphonyOrchestratorRuntimeTestSupport.makeWorkflowConfiguration(stallTimeoutMs: 1_000)
         )
         await enabledScheduler.runNext()
@@ -136,7 +136,7 @@ struct SymphonyOrchestratorRuntimeReconciliationTests {
         )
 
         await disabledService.start(
-            command: SymphonyOrchestratorRuntimeTestSupport.makeStartupCommand(),
+            workspaceLocator: SymphonyOrchestratorRuntimeTestSupport.makeWorkspaceLocator(),
             initialConfiguration: SymphonyOrchestratorRuntimeTestSupport.makeWorkflowConfiguration(stallTimeoutMs: 0)
         )
         await disabledScheduler.runNext()
