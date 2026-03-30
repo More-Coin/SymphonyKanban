@@ -109,35 +109,18 @@ public struct SymphonyKanbanColumnView: View {
 // MARK: - Preview
 
 #Preview("Kanban Column") {
+    let previewColumn = SymphonyPreviewDI.makeBoardViewModel()
+        .sections
+        .first?
+        .columns
+        .first(where: { $0.cards.isEmpty == false })
+
     SymphonyKanbanColumnView(
-        viewModel: SymphonyKanbanColumnViewModel(
-            id: "in_progress",
-            title: "In Progress",
-            statusKey: "in_progress",
-            cards: [
-                SymphonyKanbanCardViewModel(
-                    id: "issue-142",
-                    identifier: "KAN-142",
-                    title: "Rebuild Symphony dashboard pipeline",
-                    priorityLevel: 2,
-                    statusKey: "in_progress",
-                    agentName: "Codex Agent",
-                    labels: ["symphony", "dashboard"],
-                    tokenCount: "16k",
-                    lastEvent: "tool_call",
-                    isRunning: true
-                ),
-                SymphonyKanbanCardViewModel(
-                    id: "issue-205",
-                    identifier: "KAN-205",
-                    title: "Add drag-and-drop to Kanban board",
-                    priorityLevel: 3,
-                    statusKey: "in_progress",
-                    agentName: "Codex Agent",
-                    labels: ["feature"],
-                    isRunning: true
-                )
-            ]
+        viewModel: previewColumn ?? SymphonyKanbanColumnViewModel(
+            id: "empty",
+            title: "Preview",
+            statusKey: "ready",
+            cards: []
         ),
         onCardSelected: { _ in }
     )

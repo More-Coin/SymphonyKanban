@@ -8,6 +8,35 @@ struct LinearIssueTrackerRequestDefinition {
 }
 
 struct LinearIssueTrackerRequestDefinitionModel {
+    func makeTeamsRequestDefinition(
+        using configuration: LinearNormalizedTrackerConfiguration,
+        authorizationHeader: String
+    ) -> LinearIssueTrackerRequestDefinition {
+        makeRequestDefinition(
+            using: configuration,
+            authorizationHeader: authorizationHeader,
+            operationName: "FetchTeams",
+            query: teamsQuery,
+            variables: [:]
+        )
+    }
+
+    func makeProjectsRequestDefinition(
+        using configuration: LinearNormalizedTrackerConfiguration,
+        authorizationHeader: String,
+        afterCursor: String?
+    ) -> LinearIssueTrackerRequestDefinition {
+        makeRequestDefinition(
+            using: configuration,
+            authorizationHeader: authorizationHeader,
+            operationName: "FetchProjects",
+            query: projectsQuery,
+            variables: [
+                "after": afterCursor.map { .string($0) } ?? .null
+            ]
+        )
+    }
+
     func makeCandidateIssuesRequestDefinition(
         using configuration: LinearNormalizedTrackerConfiguration,
         authorizationHeader: String,
@@ -153,6 +182,50 @@ struct LinearIssueTrackerRequestDefinitionModel {
                     identifier
                     state { name type }
                   }
+                }
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+        """
+    }
+
+    private var teamsQuery: String {
+        """
+        query FetchTeams {
+          teams {
+            nodes {
+              id
+              name
+              key
+            }
+          }
+        }
+        """
+    }
+
+    private var projectsQuery: String {
+        """
+        query FetchProjects($after: String) {
+          projects(
+            first: 50
+            after: $after
+            includeArchived: false
+          ) {
+            nodes {
+              id
+              name
+              slugId
+              state
+              teams {
+                nodes {
+                  id
+                  name
+                  key
                 }
               }
             }

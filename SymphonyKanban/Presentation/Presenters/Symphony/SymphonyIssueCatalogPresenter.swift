@@ -113,6 +113,7 @@ public struct SymphonyIssueCatalogPresenter {
                     scopeName: entry.scopeName,
                     priorityLevel: entry.issue.priority ?? 0,
                     statusKey: id,
+                    statusLabel: title,
                     labels: entry.issue.labels
                 )
             }
@@ -137,6 +138,7 @@ public struct SymphonyIssueCatalogPresenter {
                     scopeName: scopeName,
                     priorityLevel: issue.priority ?? 0,
                     statusKey: id,
+                    statusLabel: title,
                     labels: issue.labels
                 )
             }

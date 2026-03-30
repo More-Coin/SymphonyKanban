@@ -80,6 +80,7 @@ public struct SymphonyKanbanCardViewModel: Equatable, Sendable, Identifiable {
     public let scopeName: String?
     public let priorityLevel: Int
     public let statusKey: String
+    public let statusLabel: String
     public let agentName: String?
     public let labels: [String]
     public let tokenCount: String?
@@ -94,6 +95,7 @@ public struct SymphonyKanbanCardViewModel: Equatable, Sendable, Identifiable {
         scopeName: String? = nil,
         priorityLevel: Int,
         statusKey: String,
+        statusLabel: String? = nil,
         agentName: String? = nil,
         labels: [String] = [],
         tokenCount: String? = nil,
@@ -107,6 +109,7 @@ public struct SymphonyKanbanCardViewModel: Equatable, Sendable, Identifiable {
         self.scopeName = scopeName
         self.priorityLevel = priorityLevel
         self.statusKey = statusKey
+        self.statusLabel = statusLabel ?? statusKey.capitalized
         self.agentName = agentName
         self.labels = labels
         self.tokenCount = tokenCount

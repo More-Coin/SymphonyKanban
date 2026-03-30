@@ -15,6 +15,8 @@ public struct SymphonyNavigationRoutes: View {
     private let prepareTrackerAuthorizationCallbackListener: @MainActor () async throws -> Void
     private let awaitTrackerAuthorizationCallback: @MainActor () async throws -> SymphonyTrackerAuthCallbackContract
     private let cancelTrackerAuthorizationCallbackListener: @MainActor () async -> Void
+    private let failedBindingCount: Int
+    private let activeBindingCount: Int
 
     @State private var selectedTab: SymphonyTabViewModel = .board
     @State private var selectedIssueIdentifier: String?
@@ -45,7 +47,9 @@ public struct SymphonyNavigationRoutes: View {
             )
         },
         cancelTrackerAuthorizationCallbackListener: @escaping @MainActor () async -> Void = {},
-        initialSelectedIssueIdentifier: String? = nil
+        initialSelectedIssueIdentifier: String? = nil,
+        failedBindingCount: Int = 0,
+        activeBindingCount: Int = 0
     ) {
         self.issueDetailController = issueDetailController
         self.issueCatalogController = issueCatalogController
@@ -55,6 +59,8 @@ public struct SymphonyNavigationRoutes: View {
         self.prepareTrackerAuthorizationCallbackListener = prepareTrackerAuthorizationCallbackListener
         self.awaitTrackerAuthorizationCallback = awaitTrackerAuthorizationCallback
         self.cancelTrackerAuthorizationCallbackListener = cancelTrackerAuthorizationCallbackListener
+        self.failedBindingCount = failedBindingCount
+        self.activeBindingCount = activeBindingCount
         _selectedIssueIdentifier = State(initialValue: initialSelectedIssueIdentifier)
     }
 
@@ -70,10 +76,12 @@ public struct SymphonyNavigationRoutes: View {
         } detail: {
             SymphonyContentRouterView(
                 selectedTab: selectedTab,
-                boardViewModel: issueCatalogViewModel?.boardViewModel ?? SymphonyKanbanBoardView.mockBoardViewModel,
-                issueListViewModel: issueCatalogViewModel?.listViewModel ?? SymphonyIssueListView.mockViewModel,
+                boardViewModel: issueCatalogViewModel?.boardViewModel ?? SymphonyPreviewDI.makeBoardViewModel(),
+                issueListViewModel: issueCatalogViewModel?.listViewModel ?? SymphonyPreviewDI.makeIssueListViewModel(),
                 issueBannerMessage: issueLoadErrorMessage,
                 isRefreshing: isRefreshing,
+                failedBindingCount: failedBindingCount,
+                activeBindingCount: activeBindingCount,
                 onCardSelected: handleIssueSelected,
                 onRefreshTapped: handleRefresh,
                 onDismissInspector: handleDismissInspector
@@ -99,7 +107,9 @@ public struct SymphonyNavigationRoutes: View {
             }
         }
         .task {
+            try? await Task.sleep(nanoseconds: 100_000_000)
             await refreshConnectionState()
+            await Task.yield()
             await refreshIssueCatalog()
         }
         .sheet(isPresented: $showAuthSheet) {
@@ -247,14 +257,6 @@ public struct SymphonyNavigationRoutes: View {
 }
 
 #Preview {
-    SymphonyNavigationRoutes(
-        issueDetailController: SymphonyIssueDetailController(
-            runtimeQueryService: SymphonyUIDI.makeRuntimeQueryService()
-        ),
-        issueCatalogController: SymphonyUIDI.makeIssueCatalogController(),
-        authController: SymphonyUIDI.makeAuthController(),
-        codexConnectionController: SymphonyUIDI.makeCodexConnectionController(),
-        initialSelectedIssueIdentifier: "KAN-142"
-    )
+    SymphonyPreviewDI.makeNavigationRoutes()
     .frame(width: 1200, height: 800)
 }

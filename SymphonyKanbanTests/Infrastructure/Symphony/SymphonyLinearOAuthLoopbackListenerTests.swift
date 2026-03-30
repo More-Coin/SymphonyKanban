@@ -6,12 +6,11 @@ import Testing
 struct SymphonyLinearOAuthLoopbackListenerTests {
     @Test
     func preparedListenerAcceptsCallbackThatArrivesBeforeAwaitBegins() async throws {
-        let gateway = SymphonyLinearOAuthLoopbackGateway()
-        try await gateway.prepareAuthorizationCallbackListener()
+        let (gateway, configuration) = try await makePreparedGateway()
 
         let callbackURL = try #require(
             URL(
-                string: "\(LinearOAuthLoopbackConfiguration.redirectURI)?code=received-code&state=expected-state"
+                string: "\(configuration.redirectURI)?code=received-code&state=expected-state"
             )
         )
         try await sendLoopbackCallback(to: callbackURL)
@@ -26,12 +25,43 @@ struct SymphonyLinearOAuthLoopbackListenerTests {
 
     @Test
     func awaitLinearCallbackTimesOutWhenNoBrowserRedirectArrives() async throws {
-        let gateway = SymphonyLinearOAuthLoopbackGateway()
-        try await gateway.prepareAuthorizationCallbackListener()
+        let (gateway, _) = try await makePreparedGateway()
 
         await #expect(throws: SymphonyTrackerAuthInfrastructureError.self) {
             _ = try await gateway.awaitLinearCallback(timeout: .milliseconds(100))
         }
+    }
+
+    private func makePreparedGateway() async throws -> (
+        gateway: SymphonyLinearOAuthLoopbackGateway,
+        configuration: LinearOAuthLoopbackListenerConfiguration
+    ) {
+        for _ in 0..<20 {
+            let configuration = LinearOAuthLoopbackListenerConfiguration(
+                host: "127.0.0.1",
+                port: UInt16.random(in: 20_000...60_000),
+                path: LinearOAuthLoopbackConfiguration.path,
+                timeoutInterval: 1,
+                timeout: .seconds(1)
+            )
+            let gateway = SymphonyLinearOAuthLoopbackGateway(configuration: configuration)
+
+            do {
+                try await gateway.prepareAuthorizationCallbackListener()
+                return (gateway, configuration)
+            } catch let error as SymphonyTrackerAuthInfrastructureError {
+                if case .callbackListenerFailed(let details) = error,
+                   details.localizedCaseInsensitiveContains("address already in use") {
+                    continue
+                }
+
+                throw error
+            }
+        }
+
+        throw SymphonyTrackerAuthInfrastructureError.callbackListenerFailed(
+            details: "Unable to reserve a loopback listener port for tests."
+        )
     }
 
     private func sendLoopbackCallback(

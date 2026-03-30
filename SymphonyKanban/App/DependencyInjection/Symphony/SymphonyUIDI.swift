@@ -3,6 +3,33 @@ import SwiftUI
 @MainActor
 public enum SymphonyUIDI {
     @MainActor
+    public static func makeStartupGate() -> SymphonyStartupGateView {
+        let startupStatusController = makeStartupStatusController()
+
+        return SymphonyStartupGateView(
+            startupStatusController: startupStatusController,
+            navigationRoutesBuilder: { viewModel in
+                AnyView(
+                    makeNavigationRoutes(
+                        failedBindingCount: viewModel.failedBindingCount,
+                        activeBindingCount: viewModel.activeBindingCount
+                    )
+                )
+            },
+            setupViewBuilder: { viewModel, onComplete in
+                AnyView(
+                    makeWorkspaceBindingSetupView(
+                        mode: viewModel.activeBindingCount > 0 || viewModel.failedBindingCount > 0 ? .repair : .firstRun,
+                        currentWorkingDirectoryPath: viewModel.currentWorkingDirectoryPath,
+                        explicitWorkflowPath: viewModel.explicitWorkflowPath,
+                        onComplete: onComplete
+                    )
+                )
+            }
+        )
+    }
+
+    @MainActor
     public static func makeStartupStatusController(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         currentWorkingDirectoryPath: String = FileManager.default.currentDirectoryPath,
@@ -18,7 +45,10 @@ public enum SymphonyUIDI {
     }
 
     @MainActor
-    public static func makeNavigationRoutes() -> SymphonyNavigationRoutes {
+    public static func makeNavigationRoutes(
+        failedBindingCount: Int = 0,
+        activeBindingCount: Int = 0
+    ) -> SymphonyNavigationRoutes {
         let runtimeQueryService = makeRuntimeQueryService()
         let environment = ProcessInfo.processInfo.environment
         let browserRuntime = SymphonyTrackerAuthBrowserRuntime()
@@ -47,7 +77,97 @@ public enum SymphonyUIDI {
             cancelTrackerAuthorizationCallbackListener: {
                 await callbackPort.cancelAuthorizationCallbackListener()
             },
-            initialSelectedIssueIdentifier: "KAN-142"
+            initialSelectedIssueIdentifier: "KAN-142",
+            failedBindingCount: failedBindingCount,
+            activeBindingCount: activeBindingCount
+        )
+    }
+
+    @MainActor
+    public static func makeWorkspaceBindingSetupView(
+        mode: SymphonyWorkspaceBindingSetupView.Mode = .firstRun,
+        currentWorkingDirectoryPath: String = FileManager.default.currentDirectoryPath,
+        explicitWorkflowPath: String? = nil,
+        onComplete: @escaping () -> Void
+    ) -> SymphonyWorkspaceBindingSetupView {
+        let environment = ProcessInfo.processInfo.environment
+        let browserRuntime = SymphonyTrackerAuthBrowserRuntime()
+        let callbackPort: any SymphonyTrackerAuthCallbackPortProtocol = SymphonyLinearOAuthLoopbackGateway()
+
+        return SymphonyWorkspaceBindingSetupView(
+            mode: mode,
+            currentWorkingDirectoryPath: currentWorkingDirectoryPath,
+            explicitWorkflowPath: explicitWorkflowPath,
+            authController: makeAuthController(
+                environment: environment
+            ),
+            scopeSelectionController: makeSetupScopeSelectionController(
+                environment: environment
+            ),
+            workspaceBindingSetupController: makeWorkspaceBindingSetupController(),
+            launchTrackerAuthorizationURL: { url in
+                browserRuntime.open(url)
+            },
+            prepareTrackerAuthorizationCallbackListener: {
+                try await callbackPort.prepareAuthorizationCallbackListener()
+            },
+            awaitTrackerAuthorizationCallback: {
+                try await callbackPort.awaitAuthorizationCallback()
+            },
+            cancelTrackerAuthorizationCallbackListener: {
+                await callbackPort.cancelAuthorizationCallbackListener()
+            },
+            onComplete: onComplete
+        )
+    }
+
+    public static func makeWorkspaceSelectionController(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> SymphonyWorkspaceSelectionController {
+        SymphonyWorkspaceSelectionController(
+            workspaceSelectionService: SymphonyWorkspaceSelectionService(
+                resolveWorkflowConfigurationUseCase: ResolveSymphonyWorkflowConfigurationUseCase(
+                    workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(
+                        environment: environment
+                    ),
+                    configResolverPort: SymphonyConfigResolverPortAdapter(
+                        environment: environment
+                    )
+                )
+            )
+        )
+    }
+
+    public static func makeWorkspaceFolderPickerRuntime() -> SymphonyWorkspaceFolderPickerRuntime {
+        SymphonyWorkspaceFolderPickerRuntime()
+    }
+
+    public static func makeSetupScopeSelectionController(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> SymphonySetupScopeSelectionController {
+        let liveGateway = SymphonyLinearIssueTrackerGateway(
+            environment: environment
+        )
+        return SymphonySetupScopeSelectionController(
+            trackerScopeService: SymphonyTrackerScopeService(
+                fetchTeamsUseCase: FetchSymphonyTrackerTeamsUseCase(
+                    trackerScopeReadPort: liveGateway
+                ),
+                fetchProjectsUseCase: FetchSymphonyTrackerProjectsUseCase(
+                    trackerScopeReadPort: liveGateway
+                )
+            )
+        )
+    }
+
+    public static func makeWorkspaceBindingSetupController() -> SymphonyWorkspaceBindingSetupController {
+        let workspaceTrackerBindingRepository = SymphonyWorkspaceTrackerBindingRepository()
+        return SymphonyWorkspaceBindingSetupController(
+            setupService: SymphonyWorkspaceBindingSetupService(
+                saveWorkspaceTrackerBindingUseCase: SaveSymphonyWorkspaceTrackerBindingUseCase(
+                    workspaceTrackerBindingPort: workspaceTrackerBindingRepository
+                )
+            )
         )
     }
 

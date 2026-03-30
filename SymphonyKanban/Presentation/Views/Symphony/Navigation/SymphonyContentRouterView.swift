@@ -9,11 +9,14 @@ public struct SymphonyContentRouterView: View {
     let issueListViewModel: SymphonyIssueListViewModel
     let issueBannerMessage: String?
     let isRefreshing: Bool
+    let failedBindingCount: Int
+    let activeBindingCount: Int
     let onCardSelected: (String) -> Void
     let onRefreshTapped: () -> Void
     let onDismissInspector: () -> Void
 
     @State private var searchText = ""
+    @State private var isDegradedBannerDismissed = false
 
     public init(
         selectedTab: SymphonyTabViewModel,
@@ -21,6 +24,8 @@ public struct SymphonyContentRouterView: View {
         issueListViewModel: SymphonyIssueListViewModel,
         issueBannerMessage: String? = nil,
         isRefreshing: Bool,
+        failedBindingCount: Int = 0,
+        activeBindingCount: Int = 0,
         onCardSelected: @escaping (String) -> Void,
         onRefreshTapped: @escaping () -> Void,
         onDismissInspector: @escaping () -> Void = {}
@@ -30,6 +35,8 @@ public struct SymphonyContentRouterView: View {
         self.issueListViewModel = issueListViewModel
         self.issueBannerMessage = issueBannerMessage
         self.isRefreshing = isRefreshing
+        self.failedBindingCount = failedBindingCount
+        self.activeBindingCount = activeBindingCount
         self.onCardSelected = onCardSelected
         self.onRefreshTapped = onRefreshTapped
         self.onDismissInspector = onDismissInspector
@@ -43,6 +50,18 @@ public struct SymphonyContentRouterView: View {
                 if let issueBannerMessage,
                    issueBannerMessage.isEmpty == false {
                     issueBanner(issueBannerMessage)
+                }
+
+                if failedBindingCount > 0, !isDegradedBannerDismissed {
+                    SymphonyStartupDegradedBannerView(
+                        failedBindingCount: failedBindingCount,
+                        activeBindingCount: activeBindingCount,
+                        onDismiss: {
+                            withAnimation(SymphonyDesignStyle.Motion.snappy) {
+                                isDegradedBannerDismissed = true
+                            }
+                        }
+                    )
                 }
 
                 switch selectedTab {

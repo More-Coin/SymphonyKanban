@@ -509,88 +509,7 @@ private struct CollapsibleSectionView<Content: View>: View {
 
 #Preview("Issue Detail — Mission Control") {
     SymphonyIssueDetailView(
-        viewModel: SymphonyIssueDetailViewModel(
-            issueIdentifier: "KAN-142",
-            title: "Rebuild Symphony dashboard pipeline",
-            subtitle: "KAN-142",
-            stateLabel: "Doing",
-            stateKey: "doing",
-            runtimeStatusLabel: "Running",
-            priorityLabel: "Priority High",
-            labels: ["symphony", "dashboard", "pipeline"],
-            descriptionText: "Rebuild the dashboard presentation slice around controller, presenter, and page-level view models. Migrate from legacy SymphonyDashboardStyle to SymphonyDesignStyle.",
-            metadataLines: [
-                "Status: Running",
-                "Branch: feature/dashboard-pipeline",
-                "Agent: codex-alpha-7"
-            ],
-            attemptsLabel: "2 restarts • retry 1",
-            generatedAtLabel: "Snapshot 1 minute ago",
-            runtimeViewModel: SymphonyIssueRuntimeViewModel(
-                title: "Runtime",
-                stateLabel: "Running",
-                sessionIDLabel: "Session sess-142",
-                threadIDLabel: "Thread thr-142",
-                turnIDLabel: "Turn turn-9",
-                processLabel: "PID 80121",
-                turnCountLabel: "9 turns",
-                startedAtLabel: "Started 54 minutes ago",
-                lastEventLabel: "Last event tool_call",
-                lastMessageLabel: "Patched dashboard presenter",
-                tokenLabel: "16,000 total tokens • 12,000 in • 4,000 out"
-            ),
-            workspaceViewModel: SymphonyWorkspaceViewModel(
-                title: "Workspace",
-                pathLabel: "/tmp/symphony/workspaces/KAN-142",
-                branchLabel: "feature/dashboard-pipeline",
-                statusLabel: "Running"
-            ),
-            logsViewModel: SymphonyLogsViewModel(
-                title: "Logs",
-                subtitle: "Codex session output captured for this issue.",
-                emptyState: "No log files are attached to this issue.",
-                entries: [
-                    SymphonyLogsViewModel.Entry(
-                        label: "Console",
-                        subtitle: "/tmp/symphony/logs/KAN-142-console.log",
-                        destination: nil
-                    )
-                ]
-            ),
-            recentEventsSectionTitle: "Recent Events",
-            recentEventsEmptyState: "No recent events are available.",
-            recentEventRows: [
-                SymphonyRecentEventRowViewModel(
-                    title: "tool_call",
-                    subtitle: "2 minutes ago",
-                    detailLines: ["Patched dashboard presenter"]
-                ),
-                SymphonyRecentEventRowViewModel(
-                    title: "build",
-                    subtitle: "6 minutes ago",
-                    detailLines: ["Build succeeded in 28s"]
-                ),
-                SymphonyRecentEventRowViewModel(
-                    title: "lint",
-                    subtitle: "10 minutes ago",
-                    detailLines: ["Architecture linter passed"]
-                )
-            ],
-            lastErrorTitle: "Last Error",
-            lastErrorMessage: "Type mismatch in SymphonyDashboardPresenter: expected IssueDetailViewModel, got IssueCardViewModel",
-            lastErrorDetailLines: [
-                "File: SymphonyDashboardPresenter.swift:142",
-                "Resolution: Auto-fixed by agent on retry"
-            ],
-            trackedSectionTitle: "Tracked Fields",
-            trackedFieldLines: [
-                "workflow: dashboard",
-                "agent: codex-alpha-7",
-                "tier: presentation"
-            ],
-            emptyStateTitle: nil,
-            emptyStateMessage: nil
-        )
+        viewModel: SymphonyPreviewDI.makeIssueDetailViewModel(.missionControl)
     )
     .frame(width: 380, height: 900)
     .background(SymphonyDesignStyle.Background.secondary)
@@ -598,38 +517,7 @@ private struct CollapsibleSectionView<Content: View>: View {
 
 #Preview("Empty Detail") {
     SymphonyIssueDetailView(
-        viewModel: SymphonyIssueDetailViewModel(
-            issueIdentifier: "",
-            title: "Select an issue",
-            subtitle: "Choose a running or queued issue from the dashboard to inspect its runtime context.",
-            stateLabel: "Idle",
-            stateKey: "idle",
-            runtimeStatusLabel: "Idle",
-            priorityLabel: nil,
-            labels: [],
-            descriptionText: nil,
-            metadataLines: [],
-            attemptsLabel: "No attempts recorded",
-            generatedAtLabel: "No runtime snapshot",
-            runtimeViewModel: nil,
-            workspaceViewModel: nil,
-            logsViewModel: SymphonyLogsViewModel(
-                title: "Logs",
-                subtitle: "Runtime logs appear here when a session is active.",
-                emptyState: "No log files are attached to this issue.",
-                entries: []
-            ),
-            recentEventsSectionTitle: "Recent Events",
-            recentEventsEmptyState: "No recent events are available.",
-            recentEventRows: [],
-            lastErrorTitle: nil,
-            lastErrorMessage: nil,
-            lastErrorDetailLines: [],
-            trackedSectionTitle: "Tracked Fields",
-            trackedFieldLines: [],
-            emptyStateTitle: "Issue Detail",
-            emptyStateMessage: "Pick an issue from the dashboard to view runtime, workspace, logs, and event details."
-        )
+        viewModel: SymphonyPreviewDI.makeIssueDetailViewModel(.empty)
     )
     .frame(width: 380, height: 600)
     .background(SymphonyDesignStyle.Background.secondary)

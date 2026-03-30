@@ -14,7 +14,11 @@ private func symphonyDefaultLinearRequestExecutor(
     return (data, httpResponse)
 }
 
-public struct SymphonyLinearIssueTrackerGateway: SymphonyIssueTrackerReadPortProtocol, @unchecked Sendable {
+public struct SymphonyLinearIssueTrackerGateway:
+    SymphonyIssueTrackerReadPortProtocol,
+    SymphonyTrackerScopeReadPortProtocol,
+    @unchecked Sendable
+{
     public typealias RequestExecutor = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
 
     private static let defaultTimeoutInterval: TimeInterval = 30
@@ -214,6 +218,83 @@ public struct SymphonyLinearIssueTrackerGateway: SymphonyIssueTrackerReadPortPro
         }
 
         return try nodes.map { try $0.toDomain() }
+    }
+
+    public func fetchTeams(
+        using trackerConfiguration: SymphonyServiceConfigContract.Tracker
+    ) async throws -> [SymphonyTrackerScopeOptionContract] {
+        let normalizedTracker = try configurationModel.fromContract(
+            from: trackerConfiguration,
+            requireProjectSlug: false
+        )
+        let authorizationHeader = try await authorizationProvider.authorizationHeader()
+        let requestDefinition = requestDefinitionModel.makeTeamsRequestDefinition(
+            using: normalizedTracker,
+            authorizationHeader: authorizationHeader
+        )
+        let request = try requestBuilder.makeRequest(
+            requestDefinition,
+            using: jsonEncoder,
+            timeoutInterval: Self.defaultTimeoutInterval
+        )
+        let response = try await performResponse(for: request)
+
+        guard let nodes = response.data?.teams?.nodes else {
+            throw SymphonyIssueTrackerInfrastructureError.linearUnknownPayload(
+                details: "The team response was missing `data.teams.nodes`."
+            )
+        }
+
+        return try nodes.map { try $0.toDomain() }
+    }
+
+    public func fetchProjects(
+        using trackerConfiguration: SymphonyServiceConfigContract.Tracker
+    ) async throws -> [SymphonyTrackerScopeOptionContract] {
+        let normalizedTracker = try configurationModel.fromContract(
+            from: trackerConfiguration,
+            requireProjectSlug: false
+        )
+        let authorizationHeader = try await authorizationProvider.authorizationHeader()
+        var afterCursor: String?
+        var projects: [SymphonyTrackerScopeOptionContract] = []
+
+        while true {
+            let requestDefinition = requestDefinitionModel.makeProjectsRequestDefinition(
+                using: normalizedTracker,
+                authorizationHeader: authorizationHeader,
+                afterCursor: afterCursor
+            )
+            let request = try requestBuilder.makeRequest(
+                requestDefinition,
+                using: jsonEncoder,
+                timeoutInterval: Self.defaultTimeoutInterval
+            )
+            let response = try await performResponse(for: request)
+
+            guard let connection = response.data?.projects,
+                  let nodes = connection.nodes,
+                  let pageInfo = connection.pageInfo,
+                  let hasNextPage = pageInfo.hasNextPage else {
+                throw SymphonyIssueTrackerInfrastructureError.linearUnknownPayload(
+                    details: "The project connection payload was missing `nodes` or `pageInfo`."
+                )
+            }
+
+            projects.append(contentsOf: try nodes.map { try $0.toDomain() })
+
+            guard hasNextPage else {
+                return projects
+            }
+
+            guard let endCursor = pageInfo.endCursor?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                  !endCursor.isEmpty else {
+                throw SymphonyIssueTrackerInfrastructureError.linearMissingEndCursor
+            }
+
+            afterCursor = endCursor
+        }
     }
 
     private func performResponse(

@@ -3,6 +3,8 @@ import Foundation
 struct LinearIssueTrackerResponseModel: Decodable {
     struct DataModel: Decodable {
         let issues: IssueConnectionModel?
+        let teams: LinearTeamConnectionModel?
+        let projects: LinearProjectConnectionModel?
     }
 
     struct GraphQLErrorModel: Decodable {
@@ -21,6 +23,75 @@ struct IssueConnectionModel: Decodable {
 struct LinearPageInfoModel: Decodable {
     let hasNextPage: Bool?
     let endCursor: String?
+}
+
+struct LinearTeamConnectionModel: Decodable {
+    let nodes: [LinearTeamNodeModel]?
+}
+
+struct LinearTeamNodeModel: Decodable {
+    let id: String?
+    let name: String?
+    let key: String?
+
+    func toDomain() throws -> SymphonyTrackerScopeOptionContract {
+        guard let id = normalizedRequired(id),
+              let name = normalizedRequired(name) else {
+            throw SymphonyIssueTrackerInfrastructureError.linearUnknownPayload(
+                details: "The team payload was missing one or more required fields."
+            )
+        }
+
+        let normalizedKey = linearNormalizedOptional(key)
+
+        return SymphonyTrackerScopeOptionContract(
+            id: "team:\(id)",
+            scopeKind: "team",
+            scopeIdentifier: id,
+            scopeName: name,
+            detailText: normalizedKey.map { "Team key \($0)" }
+        )
+    }
+}
+
+struct LinearProjectConnectionModel: Decodable {
+    let nodes: [LinearProjectNodeModel]?
+    let pageInfo: LinearPageInfoModel?
+}
+
+struct LinearProjectNodeModel: Decodable {
+    let id: String?
+    let name: String?
+    let slugId: String?
+    let state: String?
+    let teams: LinearTeamConnectionModel?
+
+    func toDomain() throws -> SymphonyTrackerScopeOptionContract {
+        guard let id = normalizedRequired(id),
+              let name = normalizedRequired(name) else {
+            throw SymphonyIssueTrackerInfrastructureError.linearUnknownPayload(
+                details: "The project payload was missing one or more required fields."
+            )
+        }
+
+        let persistedIdentifier = linearNormalizedOptional(slugId) ?? id
+        let teamNames = (teams?.nodes ?? [])
+            .compactMap { linearNormalizedOptional($0.name) }
+        let stateText = linearNormalizedOptional(state)
+        let subtitleParts = [
+            stateText,
+            teamNames.isEmpty ? nil : teamNames.joined(separator: ", ")
+        ]
+        .compactMap { $0 }
+
+        return SymphonyTrackerScopeOptionContract(
+            id: "project:\(persistedIdentifier)",
+            scopeKind: "project",
+            scopeIdentifier: persistedIdentifier,
+            scopeName: name,
+            detailText: subtitleParts.isEmpty ? nil : subtitleParts.joined(separator: " • ")
+        )
+    }
 }
 
 struct LinearIssueNodeModel: Decodable {
@@ -107,9 +178,30 @@ struct LinearRelatedIssueNodeModel: Decodable {
     let state: LinearIssueStateModel?
 }
 
+private func normalizedRequired(
+    _ value: String?
+) -> String? {
+    guard let value = linearNormalizedOptional(value) else {
+        return nil
+    }
+
+    return value
+}
+
+private func linearNormalizedOptional(
+    _ value: String?
+) -> String? {
+    guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !value.isEmpty else {
+        return nil
+    }
+
+    return value
+}
+
 private extension LinearIssueNodeModel {
     func normalizedRequired(_ value: String?, field: String) -> String? {
-        guard let value = normalizedOptional(value) else {
+        guard let value = linearNormalizedOptional(value) else {
             return nil
         }
 
@@ -117,12 +209,7 @@ private extension LinearIssueNodeModel {
     }
 
     func normalizedOptional(_ value: String?) -> String? {
-        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !value.isEmpty else {
-            return nil
-        }
-
-        return value
+        linearNormalizedOptional(value)
     }
 
     func normalizedDate(
@@ -160,11 +247,6 @@ private extension LinearIssueRelationNodeModel {
     }
 
     func normalizedOptional(_ value: String?) -> String? {
-        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !value.isEmpty else {
-            return nil
-        }
-
-        return value
+        linearNormalizedOptional(value)
     }
 }

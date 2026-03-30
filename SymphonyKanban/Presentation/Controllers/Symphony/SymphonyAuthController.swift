@@ -5,11 +5,13 @@ public struct SymphonyAuthController {
     private let trackerAuthService: SymphonyTrackerAuthService
     private let presenter: SymphonyAuthPresenter
     private let trackerConfiguration: SymphonyServiceConfigContract.Tracker
+    private let previewViewModel: SymphonyAuthViewModel?
 
     public init(
         trackerAuthService: SymphonyTrackerAuthService,
         presenter: SymphonyAuthPresenter? = nil,
-        trackerConfiguration: SymphonyServiceConfigContract.Tracker? = nil
+        trackerConfiguration: SymphonyServiceConfigContract.Tracker? = nil,
+        previewViewModel: SymphonyAuthViewModel? = nil
     ) {
         self.trackerAuthService = trackerAuthService
         self.presenter = presenter ?? SymphonyAuthPresenter()
@@ -20,9 +22,25 @@ public struct SymphonyAuthController {
             activeStateTypes: [],
             terminalStateTypes: []
         )
+        self.previewViewModel = previewViewModel
+    }
+
+    public func withPreviewViewModel(
+        _ previewViewModel: SymphonyAuthViewModel
+    ) -> SymphonyAuthController {
+        SymphonyAuthController(
+            trackerAuthService: trackerAuthService,
+            presenter: presenter,
+            trackerConfiguration: trackerConfiguration,
+            previewViewModel: previewViewModel
+        )
     }
 
     public func queryViewModel() async -> SymphonyAuthViewModel {
+        if let previewViewModel {
+            return previewViewModel
+        }
+
         do {
             return presenter.present(
                 try await executeStatus(.queryStatus(trackerConfiguration))

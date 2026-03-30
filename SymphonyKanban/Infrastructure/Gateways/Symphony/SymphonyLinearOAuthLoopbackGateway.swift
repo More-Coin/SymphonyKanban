@@ -5,12 +5,19 @@ actor SymphonyLinearOAuthLoopbackGateway: SymphonyTrackerAuthCallbackPortProtoco
     private let listenerQueue = DispatchQueue(label: "com.jido.SymphonyKanban.linear-oauth-loopback")
     private static let requestParser = LinearOAuthLoopbackCallbackTransportParser()
     private static let responseBuilder = LinearOAuthLoopbackHTTPResponseBuilder()
+    private let configuration: LinearOAuthLoopbackListenerConfiguration
     private var preparedSession: PreparedCallbackSession?
+
+    init(
+        configuration: LinearOAuthLoopbackListenerConfiguration = LinearOAuthLoopbackConfiguration.defaultListenerConfiguration
+    ) {
+        self.configuration = configuration
+    }
 
     func prepareAuthorizationCallbackListener() async throws {
         cancelPreparedSession()
 
-        let listener = try Self.makeListener()
+        let listener = try Self.makeListener(using: configuration)
         let callbackStreamGateway = Self.makeCallbackStreamGateway()
         let continuationGateway = SymphonyLinearOAuthLoopbackContinuationGateway(
             callbackStreamGateway: callbackStreamGateway
@@ -39,7 +46,11 @@ actor SymphonyLinearOAuthLoopbackGateway: SymphonyTrackerAuthCallbackPortProtoco
             }
 
             listener.newConnectionHandler = { connection in
-                Self.handleConnection(connection, continuationGateway: continuationGateway)
+                Self.handleConnection(
+                    connection,
+                    continuationGateway: continuationGateway,
+                    configuration: self.configuration
+                )
             }
 
             listener.start(queue: listenerQueue)
@@ -64,20 +75,22 @@ actor SymphonyLinearOAuthLoopbackGateway: SymphonyTrackerAuthCallbackPortProtoco
     }
 
     func awaitLinearCallback(
-        timeout: Duration = LinearOAuthLoopbackConfiguration.timeout
+        timeout: Duration? = nil
     ) async throws -> SymphonyTrackerAuthCallbackContract {
         try await prepareAuthorizationCallbackListener()
-        return try await awaitPreparedAuthorizationCallback(timeout: timeout)
+        return try await awaitPreparedAuthorizationCallback(timeout: timeout ?? configuration.timeout)
     }
 
     private func awaitPreparedAuthorizationCallback(
-        timeout: Duration = LinearOAuthLoopbackConfiguration.timeout
+        timeout: Duration? = nil
     ) async throws -> SymphonyTrackerAuthCallbackContract {
         guard let preparedSession else {
             throw Self.listenerFailure(
                 details: "The OAuth callback listener was not prepared."
             )
         }
+
+        let effectiveTimeout = timeout ?? configuration.timeout
 
         return try await withThrowingTaskGroup(of: SymphonyTrackerAuthCallbackContract.self) { group in
             group.addTask {
@@ -90,7 +103,7 @@ actor SymphonyLinearOAuthLoopbackGateway: SymphonyTrackerAuthCallbackPortProtoco
                 return callback
             }
             group.addTask {
-                try await Task.sleep(for: timeout)
+                try await Task.sleep(for: effectiveTimeout)
                 throw SymphonyTrackerAuthInfrastructureError.callbackTimedOut
             }
 
@@ -111,12 +124,17 @@ actor SymphonyLinearOAuthLoopbackGateway: SymphonyTrackerAuthCallbackPortProtoco
 
     private static func handleConnection(
         _ connection: NWConnection,
-        continuationGateway: SymphonyLinearOAuthLoopbackContinuationGateway
+        continuationGateway: SymphonyLinearOAuthLoopbackContinuationGateway,
+        configuration: LinearOAuthLoopbackListenerConfiguration
     ) {
         connection.start(queue: continuationGateway.queue)
         connection.receive(minimumIncompleteLength: 1, maximumLength: 8_192) {
             data, _, _, error in
-            let parsedCallback = requestParser.parseCallback(data: data, error: error)
+            let parsedCallback = requestParser.parseCallback(
+                data: data,
+                error: error,
+                using: configuration
+            )
             let response = responseBuilder.makeResponse(from: parsedCallback)
             sendHTTPResponse(
                 on: connection,
@@ -153,8 +171,10 @@ actor SymphonyLinearOAuthLoopbackGateway: SymphonyTrackerAuthCallbackPortProtoco
         })
     }
 
-    private static func makeListener() throws -> NWListener {
-        guard let port = NWEndpoint.Port(rawValue: LinearOAuthLoopbackConfiguration.port) else {
+    private static func makeListener(
+        using configuration: LinearOAuthLoopbackListenerConfiguration
+    ) throws -> NWListener {
+        guard let port = NWEndpoint.Port(rawValue: configuration.port) else {
             throw listenerFailure(
                 details: "The configured localhost callback port is invalid."
             )

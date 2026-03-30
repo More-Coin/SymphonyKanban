@@ -10,7 +10,8 @@ struct LinearOAuthLoopbackHTTPResponseDTO {
 struct LinearOAuthLoopbackCallbackTransportParser {
     func parseCallback(
         data: Data?,
-        error: NWError?
+        error: NWError?,
+        using configuration: LinearOAuthLoopbackListenerConfiguration
     ) -> Result<SymphonyTrackerAuthCallbackContract, Error> {
         if let error {
             return .failure(
@@ -34,9 +35,9 @@ struct LinearOAuthLoopbackCallbackTransportParser {
 
         let requestTarget = String(parts[1])
         guard let components = URLComponents(
-            string: "http://\(LinearOAuthLoopbackConfiguration.host):\(LinearOAuthLoopbackConfiguration.port)\(requestTarget)"
+            string: "http://\(configuration.host):\(configuration.port)\(requestTarget)"
         ),
-        components.path == LinearOAuthLoopbackConfiguration.path else {
+        components.path == configuration.path else {
             return .failure(SymphonyTrackerAuthInfrastructureError.invalidCallbackURL)
         }
 
