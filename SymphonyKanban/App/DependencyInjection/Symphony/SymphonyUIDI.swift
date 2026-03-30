@@ -20,8 +20,6 @@ public enum SymphonyUIDI {
                 AnyView(
                     makeWorkspaceBindingSetupView(
                         mode: viewModel.activeBindingCount > 0 || viewModel.failedBindingCount > 0 ? .repair : .firstRun,
-                        currentWorkingDirectoryPath: viewModel.currentWorkingDirectoryPath,
-                        explicitWorkflowPath: viewModel.explicitWorkflowPath,
                         onComplete: onComplete
                     )
                 )
@@ -86,9 +84,7 @@ public enum SymphonyUIDI {
     @MainActor
     public static func makeWorkspaceBindingSetupView(
         mode: SymphonyWorkspaceBindingSetupView.Mode = .firstRun,
-        currentWorkingDirectoryPath: String = FileManager.default.currentDirectoryPath,
-        explicitWorkflowPath: String? = nil,
-        onComplete: @escaping () -> Void
+        onComplete: @escaping (SymphonyWorkspaceLocatorContract) -> Void
     ) -> SymphonyWorkspaceBindingSetupView {
         let environment = ProcessInfo.processInfo.environment
         let browserRuntime = SymphonyTrackerAuthBrowserRuntime()
@@ -96,14 +92,20 @@ public enum SymphonyUIDI {
 
         return SymphonyWorkspaceBindingSetupView(
             mode: mode,
-            currentWorkingDirectoryPath: currentWorkingDirectoryPath,
-            explicitWorkflowPath: explicitWorkflowPath,
             authController: makeAuthController(
                 environment: environment
             ),
             scopeSelectionController: makeSetupScopeSelectionController(
                 environment: environment
             ),
+            workspaceSelectionController: makeWorkspaceSelectionController(
+                environment: environment
+            ),
+            chooseWorkspaceDirectory: { startingDirectoryPath in
+                makeWorkspaceFolderPickerRuntime().chooseWorkspaceDirectory(
+                    startingDirectoryPath: startingDirectoryPath
+                )
+            },
             workspaceBindingSetupController: makeWorkspaceBindingSetupController(),
             launchTrackerAuthorizationURL: { url in
                 browserRuntime.open(url)

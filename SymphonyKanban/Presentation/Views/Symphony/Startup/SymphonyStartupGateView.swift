@@ -18,35 +18,35 @@ private enum SymphonyStartupGatePhaseView: Equatable {
 /// Resolves workspace bindings on appear and transitions to the appropriate
 /// phase once the startup status controller returns a result.
 public struct SymphonyStartupGateView: View {
-    private let startupStatusController: SymphonyStartupStatusController?
     private let navigationRoutesBuilder: (SymphonyStartupStatusViewModel) -> AnyView
-    private let setupViewBuilder: (SymphonyStartupStatusViewModel, @escaping () -> Void) -> AnyView
+    private let setupViewBuilder: (SymphonyStartupStatusViewModel, @escaping (SymphonyWorkspaceLocatorContract) -> Void) -> AnyView
     private let resolvesStartupOnAppear: Bool
 
     @State private var phase: SymphonyStartupGatePhaseView
+    @State private var effectiveController: SymphonyStartupStatusController?
 
     public init(
         startupStatusController: SymphonyStartupStatusController,
         navigationRoutesBuilder: @escaping (SymphonyStartupStatusViewModel) -> AnyView,
-        setupViewBuilder: @escaping (SymphonyStartupStatusViewModel, @escaping () -> Void) -> AnyView
+        setupViewBuilder: @escaping (SymphonyStartupStatusViewModel, @escaping (SymphonyWorkspaceLocatorContract) -> Void) -> AnyView
     ) {
-        self.startupStatusController = startupStatusController
         self.navigationRoutesBuilder = navigationRoutesBuilder
         self.setupViewBuilder = setupViewBuilder
         resolvesStartupOnAppear = true
         _phase = State(initialValue: .loading)
+        _effectiveController = State(initialValue: startupStatusController)
     }
 
     public init(
         previewViewModel: SymphonyStartupStatusViewModel?,
         navigationRoutesBuilder: @escaping (SymphonyStartupStatusViewModel) -> AnyView,
-        setupViewBuilder: @escaping (SymphonyStartupStatusViewModel, @escaping () -> Void) -> AnyView
+        setupViewBuilder: @escaping (SymphonyStartupStatusViewModel, @escaping (SymphonyWorkspaceLocatorContract) -> Void) -> AnyView
     ) {
-        startupStatusController = nil
         self.navigationRoutesBuilder = navigationRoutesBuilder
         self.setupViewBuilder = setupViewBuilder
         resolvesStartupOnAppear = false
         _phase = State(initialValue: Self.makePhase(for: previewViewModel))
+        _effectiveController = State(initialValue: nil)
     }
 
     // MARK: - Body
@@ -61,7 +61,9 @@ public struct SymphonyStartupGateView: View {
                 navigationRoutesBuilder(viewModel)
 
             case .setupRequired(let viewModel):
-                setupViewBuilder(viewModel, resolveStartupState)
+                setupViewBuilder(viewModel) { locator in
+                    resolveStartupState(using: locator)
+                }
 
             case .failed(let viewModel):
                 SymphonyStartupErrorView(
@@ -104,20 +106,33 @@ public struct SymphonyStartupGateView: View {
 
     // MARK: - State Resolution
 
-    /// Resolves the startup state after the gate has already rendered its
-    /// loading frame, then maps the result to the appropriate phase.
+    /// Resolves the startup state using the effective controller, then maps
+    /// the result to the appropriate phase.
     private func resolveStartupState() {
-        guard let startupStatusController else { return }
+        guard let controller = effectiveController else { return }
 
         withAnimation(SymphonyDesignStyle.Motion.smooth) {
             phase = .loading
         }
 
-        let viewModel = startupStatusController.queryViewModel()
+        let viewModel = controller.queryViewModel()
 
         withAnimation(SymphonyDesignStyle.Motion.smooth) {
             phase = Self.makePhase(for: viewModel)
         }
+    }
+
+    /// Persists the workspace locator from the setup flow into the effective
+    /// controller, then re-resolves. Subsequent retries and re-resolutions
+    /// will use the updated locator instead of the original launch directory.
+    private func resolveStartupState(
+        using locator: SymphonyWorkspaceLocatorContract
+    ) {
+        guard let controller = effectiveController else { return }
+
+        effectiveController = controller.withWorkspaceLocator(locator)
+
+        resolveStartupState()
     }
 
     private static func makePhase(

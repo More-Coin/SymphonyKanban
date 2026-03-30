@@ -20,22 +20,23 @@ public struct SymphonyWorkspaceBindingSetupView: View {
         case trackerSelection = 1
         case authentication = 2
         case scopeSelection = 3
-        case confirmation = 4
+        case workspaceSelection = 4
+        case confirmation = 5
     }
 
     // MARK: - Parameters
 
     private let mode: Mode
-    private let currentWorkingDirectoryPath: String
-    private let explicitWorkflowPath: String?
     private let authController: SymphonyAuthController
     private let scopeSelectionController: SymphonySetupScopeSelectionController
+    private let workspaceSelectionController: SymphonyWorkspaceSelectionController
+    private let chooseWorkspaceDirectory: @MainActor (String?) -> String?
     private let workspaceBindingSetupController: SymphonyWorkspaceBindingSetupController
     private let launchTrackerAuthorizationURL: @MainActor (URL) throws -> Void
     private let prepareTrackerAuthorizationCallbackListener: @MainActor () async throws -> Void
     private let awaitTrackerAuthorizationCallback: @MainActor () async throws -> SymphonyTrackerAuthCallbackContract
     private let cancelTrackerAuthorizationCallbackListener: @MainActor () async -> Void
-    private let onComplete: () -> Void
+    private let onComplete: (SymphonyWorkspaceLocatorContract) -> Void
 
     // MARK: - State
 
@@ -44,6 +45,7 @@ public struct SymphonyWorkspaceBindingSetupView: View {
     @State private var selectedTrackerKind: String?
     @State private var isAuthenticated = false
     @State private var selectedScope: SymphonySetupScopeSelectionViewModel.Option?
+    @State private var selectedWorkspace: SymphonyWorkspaceSelectionViewModel.Selection?
     @State private var isCompleting = false
     @State private var completionErrorMessage: String?
 
@@ -51,10 +53,10 @@ public struct SymphonyWorkspaceBindingSetupView: View {
 
     public init(
         mode: Mode = .firstRun,
-        currentWorkingDirectoryPath: String = FileManager.default.currentDirectoryPath,
-        explicitWorkflowPath: String? = nil,
         authController: SymphonyAuthController,
         scopeSelectionController: SymphonySetupScopeSelectionController,
+        workspaceSelectionController: SymphonyWorkspaceSelectionController,
+        chooseWorkspaceDirectory: @escaping @MainActor (String?) -> String?,
         workspaceBindingSetupController: SymphonyWorkspaceBindingSetupController,
         launchTrackerAuthorizationURL: @escaping @MainActor (URL) throws -> Void = { _ in },
         prepareTrackerAuthorizationCallbackListener: @escaping @MainActor () async throws -> Void = {},
@@ -64,13 +66,13 @@ public struct SymphonyWorkspaceBindingSetupView: View {
             )
         },
         cancelTrackerAuthorizationCallbackListener: @escaping @MainActor () async -> Void = {},
-        onComplete: @escaping () -> Void
+        onComplete: @escaping (SymphonyWorkspaceLocatorContract) -> Void
     ) {
         self.mode = mode
-        self.currentWorkingDirectoryPath = currentWorkingDirectoryPath
-        self.explicitWorkflowPath = explicitWorkflowPath
         self.authController = authController
         self.scopeSelectionController = scopeSelectionController
+        self.workspaceSelectionController = workspaceSelectionController
+        self.chooseWorkspaceDirectory = chooseWorkspaceDirectory
         self.workspaceBindingSetupController = workspaceBindingSetupController
         self.launchTrackerAuthorizationURL = launchTrackerAuthorizationURL
         self.prepareTrackerAuthorizationCallbackListener = prepareTrackerAuthorizationCallbackListener
@@ -153,6 +155,14 @@ public struct SymphonyWorkspaceBindingSetupView: View {
                     trackerKind: selectedTrackerKind ?? "",
                     scopeSelectionController: scopeSelectionController,
                     selectedScope: $selectedScope,
+                    onContinue: { advanceTo(.workspaceSelection) }
+                )
+
+            case .workspaceSelection:
+                SymphonySetupWorkspaceSelectionStepView(
+                    workspaceSelectionController: workspaceSelectionController,
+                    chooseWorkspaceDirectory: chooseWorkspaceDirectory,
+                    selectedWorkspace: $selectedWorkspace,
                     onContinue: { advanceTo(.confirmation) }
                 )
 
@@ -160,6 +170,7 @@ public struct SymphonyWorkspaceBindingSetupView: View {
                 SymphonySetupConfirmationStepView(
                     trackerKind: selectedTrackerKind ?? "",
                     selectedScope: selectedScope,
+                    selectedWorkspace: selectedWorkspace,
                     isSaving: isCompleting,
                     errorMessage: completionErrorMessage,
                     onComplete: {
@@ -222,6 +233,11 @@ public struct SymphonyWorkspaceBindingSetupView: View {
     private func advanceTo(_ step: SetupStep) {
         if step == .scopeSelection {
             selectedScope = nil
+            selectedWorkspace = nil
+        }
+
+        if step == .workspaceSelection {
+            selectedWorkspace = nil
         }
 
         if step == .confirmation {
@@ -236,7 +252,8 @@ public struct SymphonyWorkspaceBindingSetupView: View {
     @MainActor
     private func completeSetup() async {
         guard let trackerKind = selectedTrackerKind,
-              let selectedScope else {
+              let selectedScope,
+              let selectedWorkspace else {
             return
         }
 
@@ -245,13 +262,13 @@ public struct SymphonyWorkspaceBindingSetupView: View {
 
         do {
             _ = try workspaceBindingSetupController.saveBinding(
-                workspacePath: currentWorkingDirectoryPath,
-                explicitWorkflowPath: explicitWorkflowPath,
+                selectedWorkspace: selectedWorkspace,
                 trackerKind: trackerKind,
                 selectedScope: selectedScope
             )
+            let locator = workspaceSelectionController.workspaceLocator(for: selectedWorkspace)
             isCompleting = false
-            onComplete()
+            onComplete(locator)
         } catch {
             completionErrorMessage = workspaceBindingSetupController.errorMessage(for: error)
             isCompleting = false
@@ -272,6 +289,14 @@ public struct SymphonyWorkspaceBindingSetupView: View {
 #Preview("Setup - Repair") {
     SymphonyPreviewDI.makeWorkspaceBindingSetupView(
         mode: .repair,
+        authState: .connected
+    )
+    .frame(width: 800, height: 600)
+}
+
+#Preview("Setup - Workspace Step") {
+    SymphonyPreviewDI.makeWorkspaceBindingSetupView(
+        mode: .firstRun,
         authState: .connected
     )
     .frame(width: 800, height: 600)

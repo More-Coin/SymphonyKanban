@@ -10,6 +10,7 @@ public struct SymphonySetupConfirmationStepView: View {
 
     private let trackerKind: String
     private let selectedScope: SymphonySetupScopeSelectionViewModel.Option?
+    private let selectedWorkspace: SymphonyWorkspaceSelectionViewModel.Selection?
     private let isSaving: Bool
     private let errorMessage: String?
     private let onComplete: () -> Void
@@ -29,12 +30,14 @@ public struct SymphonySetupConfirmationStepView: View {
     public init(
         trackerKind: String,
         selectedScope: SymphonySetupScopeSelectionViewModel.Option?,
+        selectedWorkspace: SymphonyWorkspaceSelectionViewModel.Selection? = nil,
         isSaving: Bool = false,
         errorMessage: String? = nil,
         onComplete: @escaping () -> Void
     ) {
         self.trackerKind = trackerKind
         self.selectedScope = selectedScope
+        self.selectedWorkspace = selectedWorkspace
         self.isSaving = isSaving
         self.errorMessage = errorMessage
         self.onComplete = onComplete
@@ -74,7 +77,7 @@ public struct SymphonySetupConfirmationStepView: View {
                 .font(SymphonyDesignStyle.Typography.title)
                 .foregroundStyle(SymphonyDesignStyle.Text.primary)
 
-            Text("Review the single workspace binding that will be saved before setup finishes.")
+            Text("Review the scope and workspace folder that will be bound together before setup finishes.")
                 .font(SymphonyDesignStyle.Typography.body)
                 .foregroundStyle(SymphonyDesignStyle.Text.secondary)
                 .multilineTextAlignment(.center)
@@ -85,20 +88,22 @@ public struct SymphonySetupConfirmationStepView: View {
     // MARK: - Binding Cards
 
     private var bindingCards: some View {
-        Group {
+        VStack(spacing: SymphonyDesignStyle.Spacing.sm) {
             if let selectedScope {
-                bindingCard(for: selectedScope)
+                scopeCard(for: selectedScope)
             } else {
-                Text("Choose a scope before saving this workspace binding.")
-                    .font(SymphonyDesignStyle.Typography.body)
-                    .foregroundStyle(SymphonyDesignStyle.Text.secondary)
-                    .padding(SymphonyDesignStyle.Spacing.lg)
-                    .symphonyCard()
+                missingCard("Choose a scope before saving this workspace binding.")
+            }
+
+            if let selectedWorkspace {
+                workspaceCard(for: selectedWorkspace)
+            } else {
+                missingCard("Choose a workspace folder before saving this binding.")
             }
         }
     }
 
-    private func bindingCard(
+    private func scopeCard(
         for scope: SymphonySetupScopeSelectionViewModel.Option
     ) -> some View {
         HStack {
@@ -122,6 +127,46 @@ public struct SymphonySetupConfirmationStepView: View {
         .padding(SymphonyDesignStyle.Spacing.md)
         .symphonyCard()
         .symphonyStaggerIn(index: 1, isVisible: appeared)
+    }
+
+    private func workspaceCard(
+        for workspace: SymphonyWorkspaceSelectionViewModel.Selection
+    ) -> some View {
+        HStack {
+            SymphonyLabelChipView(
+                "Folder",
+                color: SymphonyDesignStyle.Accent.teal
+            )
+
+            VStack(alignment: .leading, spacing: SymphonyDesignStyle.Spacing.xxs) {
+                Text(workspace.workspaceName)
+                    .font(SymphonyDesignStyle.Typography.headline)
+                    .foregroundStyle(SymphonyDesignStyle.Text.primary)
+
+                Text(workspace.workspacePath)
+                    .font(SymphonyDesignStyle.Typography.caption)
+                    .foregroundStyle(SymphonyDesignStyle.Text.secondary)
+                    .lineLimit(1)
+
+                Text(workspace.resolvedWorkflowPath)
+                    .font(SymphonyDesignStyle.Typography.micro)
+                    .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+        }
+        .padding(SymphonyDesignStyle.Spacing.md)
+        .symphonyCard()
+        .symphonyStaggerIn(index: 2, isVisible: appeared)
+    }
+
+    private func missingCard(_ text: String) -> some View {
+        Text(text)
+            .font(SymphonyDesignStyle.Typography.body)
+            .foregroundStyle(SymphonyDesignStyle.Text.secondary)
+            .padding(SymphonyDesignStyle.Spacing.lg)
+            .symphonyCard()
     }
 
     // MARK: - Actions
@@ -152,8 +197,8 @@ public struct SymphonySetupConfirmationStepView: View {
                 )
         }
         .buttonStyle(.plain)
-        .disabled(selectedScope == nil || isSaving)
-        .opacity(selectedScope == nil || isSaving ? 0.5 : 1.0)
+        .disabled(selectedScope == nil || selectedWorkspace == nil || isSaving)
+        .opacity(selectedScope == nil || selectedWorkspace == nil || isSaving ? 0.5 : 1.0)
     }
 
     private func errorBanner(_ message: String) -> some View {
@@ -170,13 +215,13 @@ public struct SymphonySetupConfirmationStepView: View {
         .clipShape(
             RoundedRectangle(cornerRadius: SymphonyDesignStyle.Radius.lg, style: .continuous)
         )
-        .symphonyStaggerIn(index: 3, isVisible: appeared)
+        .symphonyStaggerIn(index: 4, isVisible: appeared)
     }
 }
 
 // MARK: - Preview
 
-#Preview("Single") {
+#Preview("Complete") {
     SymphonySetupConfirmationStepView(
         trackerKind: "linear",
         selectedScope: .init(
@@ -186,6 +231,13 @@ public struct SymphonySetupConfirmationStepView: View {
             scopeIdentifier: "team-eng",
             scopeName: "Engineering",
             detailText: "Team key ENG"
+        ),
+        selectedWorkspace: .init(
+            id: "/Users/dev/NaraIOS",
+            workspacePath: "/Users/dev/NaraIOS",
+            explicitWorkflowPath: nil,
+            resolvedWorkflowPath: "/Users/dev/NaraIOS/WORKFLOW.md",
+            workspaceName: "NaraIOS"
         ),
         onComplete: {}
     )
@@ -204,7 +256,31 @@ public struct SymphonySetupConfirmationStepView: View {
             scopeName: "Platform Rewrite",
             detailText: "planned • Engineering"
         ),
+        selectedWorkspace: .init(
+            id: "/Users/dev/Platform",
+            workspacePath: "/Users/dev/Platform",
+            explicitWorkflowPath: nil,
+            resolvedWorkflowPath: "/Users/dev/Platform/WORKFLOW.md",
+            workspaceName: "Platform"
+        ),
         isSaving: true,
+        onComplete: {}
+    )
+    .frame(width: 480, height: 600)
+    .background(LinearGradient.symphonyBackground)
+}
+
+#Preview("Missing Workspace") {
+    SymphonySetupConfirmationStepView(
+        trackerKind: "linear",
+        selectedScope: .init(
+            id: "team-eng",
+            scopeKind: "team",
+            scopeKindLabel: "Team",
+            scopeIdentifier: "team-eng",
+            scopeName: "Engineering",
+            detailText: "Team key ENG"
+        ),
         onComplete: {}
     )
     .frame(width: 480, height: 600)

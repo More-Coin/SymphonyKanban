@@ -84,16 +84,14 @@ public enum SymphonyPreviewDI {
     public static func makeWorkspaceBindingSetupView(
         mode: SymphonyWorkspaceBindingSetupView.Mode = .firstRun,
         authState: AuthPreviewState = .disconnected,
-        currentWorkingDirectoryPath: String = "/Preview/NaraIOS",
-        explicitWorkflowPath: String? = "/Preview/NaraIOS/WORKFLOW.md",
-        onComplete: @escaping () -> Void = {}
+        onComplete: @escaping (SymphonyWorkspaceLocatorContract) -> Void = { _ in }
     ) -> SymphonyWorkspaceBindingSetupView {
         SymphonyWorkspaceBindingSetupView(
             mode: mode,
-            currentWorkingDirectoryPath: currentWorkingDirectoryPath,
-            explicitWorkflowPath: explicitWorkflowPath,
             authController: makeAuthController(state: authState),
             scopeSelectionController: makeSetupScopeSelectionController(),
+            workspaceSelectionController: makeWorkspaceSelectionController(),
+            chooseWorkspaceDirectory: { _ in nil },
             workspaceBindingSetupController: makeWorkspaceBindingSetupController(),
             onComplete: onComplete
         )

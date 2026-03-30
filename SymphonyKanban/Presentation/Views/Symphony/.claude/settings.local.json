@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(swift\\)$\")",
+      "Bash(xcodebuild -project SymphonyKanban.xcodeproj -scheme SymphonyKanban -destination 'platform=macOS' build)"
+    ]
+  }
+}
