@@ -21,8 +21,8 @@ public struct SymphonyStartupController {
                 arguments: arguments,
                 currentWorkingDirectoryPath: currentWorkingDirectoryPath
             )
-            let result = try startupService.execute(command.workspaceLocatorContract())
-            return renderer.render(result)
+            let executionResult = try startupService.execute(command.workspaceLocatorContract())
+            return renderer.render(executionResult.result)
         } catch {
             return renderer.renderError(error)
         }

@@ -19,7 +19,13 @@ struct SymphonyStartupControllerTests {
         )
 
         let workingDirectoryPath = SymphonyStartupFlowTestSupport.temporaryDirectory().path
-        let controller = SymphonyStartupFlowTestSupport.makeController()
+        let controller = SymphonyStartupFlowTestSupport.makeController(
+            workspaceTrackerBindingPort: WorkspaceTrackerBindingPortSpy(
+                listedBindings: [SymphonyStartupFlowTestSupport.makeWorkspaceBinding(
+                    workspacePath: workingDirectoryPath
+                )]
+            )
+        )
 
         let (stdoutOutput, exitCode) = SymphonyStartupFlowTestSupport.captureStandardOutput {
             controller.run(
@@ -34,7 +40,9 @@ struct SymphonyStartupControllerTests {
                 "component=symphony event=startup_validation outcome=completed"
             )
         )
-        #expect(stdoutOutput.contains("workflow_path=\"\(fileURL.path)\""))
+        #expect(stdoutOutput.contains("active_bindings=1"))
+        #expect(stdoutOutput.contains("ready_bindings=1"))
+        #expect(stdoutOutput.contains("failed_bindings=0"))
     }
 
     @Test
@@ -50,7 +58,13 @@ struct SymphonyStartupControllerTests {
         Prompt body.
         """.write(to: fileURL, atomically: true, encoding: .utf8)
 
-        let controller = SymphonyStartupFlowTestSupport.makeController()
+        let controller = SymphonyStartupFlowTestSupport.makeController(
+            workspaceTrackerBindingPort: WorkspaceTrackerBindingPortSpy(
+                listedBindings: [SymphonyStartupFlowTestSupport.makeWorkspaceBinding(
+                    workspacePath: workingDirectoryURL.path
+                )]
+            )
+        )
 
         let (stdoutOutput, exitCode) = SymphonyStartupFlowTestSupport.captureStandardOutput {
             controller.run(
@@ -65,7 +79,9 @@ struct SymphonyStartupControllerTests {
                 "component=symphony event=startup_validation outcome=completed"
             )
         )
-        #expect(stdoutOutput.contains("workflow_path=\"\(fileURL.path)\""))
+        #expect(stdoutOutput.contains("active_bindings=1"))
+        #expect(stdoutOutput.contains("ready_bindings=1"))
+        #expect(stdoutOutput.contains("failed_bindings=0"))
     }
 
     @Test
@@ -82,66 +98,57 @@ struct SymphonyStartupControllerTests {
         )
 
         let workingDirectoryPath = SymphonyStartupFlowTestSupport.temporaryDirectory().path
-        let controller = SymphonyStartupFlowTestSupport.makeController()
+        let controller = SymphonyStartupFlowTestSupport.makeController(
+            workspaceTrackerBindingPort: WorkspaceTrackerBindingPortSpy(
+                listedBindings: [SymphonyStartupFlowTestSupport.makeWorkspaceBinding(
+                    workspacePath: workingDirectoryPath
+                )]
+            )
+        )
 
-        let (stderrOutput, exitCode) = SymphonyStartupFlowTestSupport.captureStandardError {
+        let (stdoutOutput, exitCode) = SymphonyStartupFlowTestSupport.captureStandardOutput {
             controller.run(
                 arguments: ["symphony", fileURL.path],
                 currentWorkingDirectoryPath: workingDirectoryPath
             )
         }
 
-        #expect(exitCode == EXIT_FAILURE)
+        #expect(exitCode == EXIT_SUCCESS)
         #expect(
-            stderrOutput.contains(
-                "component=symphony event=startup_validation outcome=failed"
+            stdoutOutput.contains(
+                "component=symphony event=startup_validation outcome=completed"
             )
         )
-        #expect(
-            stderrOutput.contains(
-                """
-                error_code=symphony.startup.missing_tracker_project_identifier \
-                reason="The workflow configuration is missing the tracker project identifier." \
-                retryable=false
-                """
-            )
-        )
-        #expect(
-            !stderrOutput.contains(
-                "Set the tracker project identifier in the workflow configuration."
-            )
-        )
+        #expect(stdoutOutput.contains("ready_bindings=0"))
+        #expect(stdoutOutput.contains("failed_bindings=1"))
     }
 
     @Test
     func startupControllerReturnsTypedFailureWhenDefaultWorkflowFileIsMissing() {
         let workingDirectoryPath = SymphonyStartupFlowTestSupport.temporaryDirectory().path
-        let controller = SymphonyStartupFlowTestSupport.makeController()
+        let controller = SymphonyStartupFlowTestSupport.makeController(
+            workspaceTrackerBindingPort: WorkspaceTrackerBindingPortSpy(
+                listedBindings: [SymphonyStartupFlowTestSupport.makeWorkspaceBinding(
+                    workspacePath: workingDirectoryPath
+                )]
+            )
+        )
 
-        let (stderrOutput, exitCode) = SymphonyStartupFlowTestSupport.captureStandardError {
+        let (stdoutOutput, exitCode) = SymphonyStartupFlowTestSupport.captureStandardOutput {
             controller.run(
                 arguments: ["symphony"],
                 currentWorkingDirectoryPath: workingDirectoryPath
             )
         }
 
-        #expect(exitCode == EXIT_FAILURE)
+        #expect(exitCode == EXIT_SUCCESS)
         #expect(
-            stderrOutput.contains(
-                "component=symphony event=startup_validation outcome=failed"
+            stdoutOutput.contains(
+                "component=symphony event=startup_validation outcome=completed"
             )
         )
-        #expect(
-            stderrOutput.contains(
-                """
-                error_code=symphony.workflow.missing_workflow_file \
-                reason="The workflow file could not be found or read." \
-                retryable=false \
-                workflow_path="\(workingDirectoryPath)/WORKFLOW.md"
-                """
-            )
-        )
-        #expect(!stderrOutput.contains("Path: \(workingDirectoryPath)/WORKFLOW.md"))
+        #expect(stdoutOutput.contains("ready_bindings=0"))
+        #expect(stdoutOutput.contains("failed_bindings=1"))
     }
 
     @Test
@@ -182,26 +189,56 @@ struct SymphonyStartupControllerTests {
             """
         )
 
-        let controller = SymphonyStartupFlowTestSupport.makeController()
+        let controller = SymphonyStartupFlowTestSupport.makeController(
+            workspaceTrackerBindingPort: WorkspaceTrackerBindingPortSpy(
+                listedBindings: [SymphonyStartupFlowTestSupport.makeWorkspaceBinding(
+                    workspacePath: SymphonyStartupFlowTestSupport.temporaryDirectory().path
+                )]
+            )
+        )
 
-        let (stderrOutput, exitCode) = SymphonyStartupFlowTestSupport.captureStandardError {
+        let (stdoutOutput, exitCode) = SymphonyStartupFlowTestSupport.captureStandardOutput {
             controller.run(
                 arguments: ["symphony", fileURL.path],
                 currentWorkingDirectoryPath: SymphonyStartupFlowTestSupport.temporaryDirectory().path
             )
         }
 
+        #expect(exitCode == EXIT_SUCCESS)
+        #expect(stdoutOutput.contains("ready_bindings=0"))
+        #expect(stdoutOutput.contains("failed_bindings=1"))
+    }
+
+    @Test
+    func startupControllerReturnsBlockedSetupRequiredWhenBindingMissing() throws {
+        let fileURL = try SymphonyStartupFlowTestSupport.makeWorkflowFile(
+            named: "StartupWorkflow.md",
+            contents: """
+            ---
+            tracker:
+              kind: linear
+              project_slug: project
+            ---
+            Prompt body.
+            """
+        )
+
+        let controller = SymphonyStartupFlowTestSupport.makeController()
+        let workingDirectoryPath = SymphonyStartupFlowTestSupport.temporaryDirectory().path
+
+        let (stdoutOutput, exitCode) = SymphonyStartupFlowTestSupport.captureStandardOutput {
+            controller.run(
+                arguments: ["symphony", fileURL.path],
+                currentWorkingDirectoryPath: workingDirectoryPath
+            )
+        }
+
         #expect(exitCode == EXIT_FAILURE)
         #expect(
-            stderrOutput.contains(
-                """
-                error_code=symphony.workflow.workflow_parse_error \
-                reason="The workflow file front matter could not be parsed." \
-                retryable=false
-                """
+            stdoutOutput.contains(
+                "component=symphony event=startup_validation outcome=blocked"
             )
         )
-        #expect(!stderrOutput.contains("kind: [linear"))
-        #expect(!stderrOutput.contains("Prompt body should stay out of logs."))
+        #expect(stdoutOutput.contains("startup_state=setupRequired"))
     }
 }

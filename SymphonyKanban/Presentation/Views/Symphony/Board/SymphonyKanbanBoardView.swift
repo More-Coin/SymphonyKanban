@@ -25,9 +25,81 @@ public struct SymphonyKanbanBoardView: View {
     }
 
     public var body: some View {
+        Group {
+            if shouldRenderSections {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: SymphonyDesignStyle.Spacing.xl) {
+                        ForEach(Array(viewModel.sections.enumerated()), id: \.element.id) { index, section in
+                            boardSection(section, sectionIndex: index)
+                        }
+                    }
+                    .padding(.horizontal, SymphonyDesignStyle.Spacing.xl)
+                    .padding(.vertical, SymphonyDesignStyle.Spacing.lg)
+                }
+            } else {
+                columnsScrollView(
+                    columns: viewModel.columns,
+                    animationOffset: 0
+                )
+            }
+        }
+        .background(SymphonyDesignStyle.Background.secondary.ignoresSafeArea())
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onBackgroundTapped()
+        }
+        .onAppear {
+            withAnimation(SymphonyDesignStyle.Motion.gentle) {
+                appeared = true
+            }
+        }
+    }
+
+    private var shouldRenderSections: Bool {
+        viewModel.sections.count > 1 || viewModel.sections.contains {
+            $0.title != nil || $0.errorMessage != nil
+        }
+    }
+
+    private func boardSection(
+        _ section: SymphonyKanbanBoardSectionViewModel,
+        sectionIndex: Int
+    ) -> some View {
+        VStack(alignment: .leading, spacing: SymphonyDesignStyle.Spacing.md) {
+            if let title = section.title {
+                VStack(alignment: .leading, spacing: SymphonyDesignStyle.Spacing.xs) {
+                    Text(title)
+                        .font(SymphonyDesignStyle.Typography.title3)
+                        .foregroundStyle(SymphonyDesignStyle.Text.primary)
+
+                    if let subtitle = section.subtitle,
+                       subtitle.isEmpty == false {
+                        Text(subtitle)
+                            .font(SymphonyDesignStyle.Typography.caption)
+                            .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
+                    }
+                }
+            }
+
+            if let errorMessage = section.errorMessage,
+               errorMessage.isEmpty == false {
+                sectionErrorView(errorMessage)
+            }
+
+            columnsScrollView(
+                columns: section.columns,
+                animationOffset: sectionIndex * 10
+            )
+        }
+    }
+
+    private func columnsScrollView(
+        columns: [SymphonyKanbanColumnViewModel],
+        animationOffset: Int
+    ) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: SymphonyDesignStyle.Kanban.columnSpacing) {
-                ForEach(Array(viewModel.columns.enumerated()), id: \.element.id) { index, column in
+                ForEach(Array(columns.enumerated()), id: \.element.id) { index, column in
                     SymphonyKanbanColumnView(
                         viewModel: column,
                         isDropTarget: dropTargetColumnID == column.id,
@@ -42,22 +114,31 @@ public struct SymphonyKanbanBoardView: View {
                             dropTargetColumnID = targeted ? column.id : nil
                         }
                     }
-                    .symphonyStaggerIn(index: index, isVisible: appeared)
+                    .symphonyStaggerIn(index: animationOffset + index, isVisible: appeared)
                 }
             }
-            .padding(.horizontal, SymphonyDesignStyle.Spacing.xl)
-            .padding(.vertical, SymphonyDesignStyle.Spacing.lg)
         }
-        .background(SymphonyDesignStyle.Background.secondary.ignoresSafeArea())
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onBackgroundTapped()
+    }
+
+    private func sectionErrorView(
+        _ message: String
+    ) -> some View {
+        HStack(spacing: SymphonyDesignStyle.Spacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(SymphonyDesignStyle.Accent.coral)
+            Text(message)
+                .font(SymphonyDesignStyle.Typography.caption)
+                .foregroundStyle(SymphonyDesignStyle.Text.secondary)
         }
-        .onAppear {
-            withAnimation(SymphonyDesignStyle.Motion.gentle) {
-                appeared = true
-            }
-        }
+        .padding(.horizontal, SymphonyDesignStyle.Spacing.md)
+        .padding(.vertical, SymphonyDesignStyle.Spacing.sm)
+        .background(SymphonyDesignStyle.Background.tertiary)
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: SymphonyDesignStyle.Radius.lg,
+                style: .continuous
+            )
+        )
     }
 }
 

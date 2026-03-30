@@ -37,45 +37,25 @@ public struct SymphonyIssueListView: View {
         return ["All"] + keys.sorted()
     }
 
-    private var filteredRows: [SymphonyIssueListRowViewModel] {
-        var rows = viewModel.rows
-
-        if statusFilter != "All" {
-            rows = rows.filter { $0.statusLabel == statusFilter }
-        }
-
-        if !searchText.isEmpty {
-            let query = searchText.lowercased()
-            rows = rows.filter {
-                $0.identifier.lowercased().contains(query) ||
-                $0.title.lowercased().contains(query) ||
-                ($0.agentName?.lowercased().contains(query) ?? false) ||
-                $0.labels.contains(where: { $0.lowercased().contains(query) })
+    private var filteredSections: [SymphonyIssueListSectionViewModel] {
+        viewModel.sections.compactMap { section in
+            let rows = filteredRows(from: section.rows)
+            guard rows.isEmpty == false || section.errorMessage != nil else {
+                return nil
             }
-        }
 
-        rows.sort { a, b in
-            let result: Bool
-            switch sortColumn {
-            case .priority:
-                result = a.priorityLevel < b.priorityLevel
-            case .identifier:
-                result = a.identifier.localizedStandardCompare(b.identifier) == .orderedAscending
-            case .title:
-                result = a.title.localizedStandardCompare(b.title) == .orderedAscending
-            case .status:
-                result = a.statusLabel.localizedStandardCompare(b.statusLabel) == .orderedAscending
-            case .agent:
-                result = (a.agentName ?? "").localizedStandardCompare(b.agentName ?? "") == .orderedAscending
-            case .lastEvent:
-                result = (a.lastEvent ?? "").localizedStandardCompare(b.lastEvent ?? "") == .orderedAscending
-            case .tokens:
-                result = (a.tokenCount ?? "").localizedStandardCompare(b.tokenCount ?? "") == .orderedAscending
-            }
-            return sortAscending ? result : !result
+            return SymphonyIssueListSectionViewModel(
+                id: section.id,
+                title: section.title,
+                subtitle: section.subtitle,
+                errorMessage: section.errorMessage,
+                rows: rows
+            )
         }
+    }
 
-        return rows
+    private var filteredRowsCount: Int {
+        filteredSections.reduce(0) { $0 + $1.rows.count }
     }
 
     public var body: some View {
@@ -106,7 +86,7 @@ public struct SymphonyIssueListView: View {
 
             Spacer()
 
-            Text("\(filteredRows.count) issues")
+            Text("\(filteredRowsCount) issues")
                 .font(SymphonyDesignStyle.Typography.caption)
                 .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
         }
@@ -178,12 +158,47 @@ public struct SymphonyIssueListView: View {
     private var dataRows: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                ForEach(Array(filteredRows.enumerated()), id: \.element.id) { index, row in
-                    issueRow(row, index: index)
-                    SymphonyDividerView(opacity: 0.03)
+                ForEach(Array(filteredSections.enumerated()), id: \.element.id) { sectionIndex, section in
+                    if shouldRenderSectionHeader(section) {
+                        sectionHeader(section)
+                    }
+
+                    if let errorMessage = section.errorMessage,
+                       errorMessage.isEmpty == false {
+                        sectionErrorRow(errorMessage)
+                    }
+
+                    ForEach(Array(section.rows.enumerated()), id: \.element.id) { rowIndex, row in
+                        issueRow(row, index: sectionIndex * 1000 + rowIndex)
+                        SymphonyDividerView(opacity: 0.03)
+                    }
                 }
             }
         }
+    }
+
+    private func filteredRows(
+        from sourceRows: [SymphonyIssueListRowViewModel]
+    ) -> [SymphonyIssueListRowViewModel] {
+        var rows = sourceRows
+
+        if statusFilter != "All" {
+            rows = rows.filter { $0.statusLabel == statusFilter }
+        }
+
+        if !searchText.isEmpty {
+            let query = searchText.lowercased()
+            rows = rows.filter {
+                $0.identifier.lowercased().contains(query) ||
+                $0.title.lowercased().contains(query) ||
+                ($0.scopeName?.lowercased().contains(query) ?? false) ||
+                ($0.agentName?.lowercased().contains(query) ?? false) ||
+                $0.labels.contains(where: { $0.lowercased().contains(query) })
+            }
+        }
+
+        rows.sort(by: rowComparator)
+        return rows
     }
 
     private func issueRow(_ row: SymphonyIssueListRowViewModel, index: Int) -> some View {
@@ -203,11 +218,21 @@ public struct SymphonyIssueListView: View {
                     .frame(width: 90, alignment: .leading)
 
                 // Title
-                Text(row.title)
-                    .font(SymphonyDesignStyle.Typography.body)
-                    .foregroundStyle(SymphonyDesignStyle.Text.primary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.title)
+                        .font(SymphonyDesignStyle.Typography.body)
+                        .foregroundStyle(SymphonyDesignStyle.Text.primary)
+                        .lineLimit(1)
+
+                    if let scopeName = row.scopeName,
+                       scopeName.isEmpty == false {
+                        Text(scopeName)
+                            .font(SymphonyDesignStyle.Typography.micro)
+                            .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
+                            .lineLimit(1)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Status
                 SymphonyStatusBadgeView(row.statusLabel, statusKey: row.statusKey, size: .small)
@@ -297,6 +322,76 @@ public struct SymphonyIssueListView: View {
                     .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
             }
         }
+    }
+
+    private func shouldRenderSectionHeader(
+        _ section: SymphonyIssueListSectionViewModel
+    ) -> Bool {
+        section.title != nil || section.errorMessage != nil || viewModel.sections.count > 1
+    }
+
+    private func sectionHeader(
+        _ section: SymphonyIssueListSectionViewModel
+    ) -> some View {
+        VStack(alignment: .leading, spacing: SymphonyDesignStyle.Spacing.xxs) {
+            if let title = section.title {
+                Text(title)
+                    .font(SymphonyDesignStyle.Typography.title3)
+                    .foregroundStyle(SymphonyDesignStyle.Text.primary)
+            }
+
+            if let subtitle = section.subtitle,
+               subtitle.isEmpty == false {
+                Text(subtitle)
+                    .font(SymphonyDesignStyle.Typography.caption)
+                    .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, SymphonyDesignStyle.Spacing.lg)
+        .padding(.top, SymphonyDesignStyle.Spacing.lg)
+        .padding(.bottom, SymphonyDesignStyle.Spacing.sm)
+        .background(SymphonyDesignStyle.Background.secondary)
+    }
+
+    private func sectionErrorRow(
+        _ message: String
+    ) -> some View {
+        HStack(spacing: SymphonyDesignStyle.Spacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(SymphonyDesignStyle.Accent.coral)
+            Text(message)
+                .font(SymphonyDesignStyle.Typography.caption)
+                .foregroundStyle(SymphonyDesignStyle.Text.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, SymphonyDesignStyle.Spacing.lg)
+        .padding(.vertical, SymphonyDesignStyle.Spacing.sm)
+        .background(SymphonyDesignStyle.Background.tertiary)
+    }
+
+    private func rowComparator(
+        _ a: SymphonyIssueListRowViewModel,
+        _ b: SymphonyIssueListRowViewModel
+    ) -> Bool {
+        let result: Bool
+        switch sortColumn {
+        case .priority:
+            result = a.priorityLevel < b.priorityLevel
+        case .identifier:
+            result = a.identifier.localizedStandardCompare(b.identifier) == .orderedAscending
+        case .title:
+            result = a.title.localizedStandardCompare(b.title) == .orderedAscending
+        case .status:
+            result = a.statusLabel.localizedStandardCompare(b.statusLabel) == .orderedAscending
+        case .agent:
+            result = (a.agentName ?? "").localizedStandardCompare(b.agentName ?? "") == .orderedAscending
+        case .lastEvent:
+            result = (a.lastEvent ?? "").localizedStandardCompare(b.lastEvent ?? "") == .orderedAscending
+        case .tokens:
+            result = (a.tokenCount ?? "").localizedStandardCompare(b.tokenCount ?? "") == .orderedAscending
+        }
+        return sortAscending ? result : !result
     }
 }
 

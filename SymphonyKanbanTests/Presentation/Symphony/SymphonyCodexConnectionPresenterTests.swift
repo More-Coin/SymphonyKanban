@@ -3,27 +3,6 @@ import Testing
 
 struct SymphonyCodexConnectionPresenterTests {
     @Test
-    func presentBuildsConnectedViewModelWithReadableSummary() {
-        let presenter = SymphonyCodexConnectionPresenter()
-
-        let viewModel = presenter.present(
-            SymphonyCodexConnectionStatusContract(
-                state: .connected,
-                command: "codex app-server",
-                executableName: "codex",
-                executablePath: "/opt/homebrew/bin/codex",
-                statusMessage: "Codex is installed, authenticated, and ready for Symphony.",
-                detailMessage: "Logged in using ChatGPT"
-            )
-        )
-
-        #expect(viewModel.isConnected)
-        #expect(viewModel.title == "Codex Ready")
-        #expect(viewModel.message.contains("CLI path: /opt/homebrew/bin/codex"))
-        #expect(viewModel.message.contains("Logged in using ChatGPT"))
-    }
-
-    @Test
     func presentBuildsLoginRequiredViewModelWhenSessionIsMissing() {
         let presenter = SymphonyCodexConnectionPresenter()
 

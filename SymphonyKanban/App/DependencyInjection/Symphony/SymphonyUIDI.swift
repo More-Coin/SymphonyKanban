@@ -3,6 +3,21 @@ import SwiftUI
 @MainActor
 public enum SymphonyUIDI {
     @MainActor
+    public static func makeStartupStatusController(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        currentWorkingDirectoryPath: String = FileManager.default.currentDirectoryPath,
+        explicitWorkflowPath: String? = nil
+    ) -> SymphonyStartupStatusController {
+        SymphonyStartupStatusController(
+            startupService: makeStartupService(
+                environment: environment
+            ),
+            currentWorkingDirectoryPath: currentWorkingDirectoryPath,
+            explicitWorkflowPath: explicitWorkflowPath
+        )
+    }
+
+    @MainActor
     public static func makeNavigationRoutes() -> SymphonyNavigationRoutes {
         let runtimeQueryService = makeRuntimeQueryService()
         let environment = ProcessInfo.processInfo.environment
@@ -80,20 +95,21 @@ public enum SymphonyUIDI {
         let trackerAuthPortAdapter = SymphonyLinearTrackerAuthPortAdapter(
             environment: environment
         )
-        let resolveWorkflowConfigurationUseCase = ResolveSymphonyWorkflowConfigurationUseCase(
-            workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(
-                environment: environment
+        let displayModePreferenceRepository = SymphonyIssueCatalogDisplayPreferenceRepository()
+        let displayPreferenceService = SymphonyIssueCatalogDisplayPreferenceService(
+            queryDisplayModeUseCase: QuerySymphonyIssueCatalogDisplayModeUseCase(
+                preferencePort: displayModePreferenceRepository
             ),
-            configResolverPort: SymphonyConfigResolverPortAdapter(
-                environment: environment
+            saveDisplayModeUseCase: SaveSymphonyIssueCatalogDisplayModeUseCase(
+                preferencePort: displayModePreferenceRepository
             )
         )
 
         return SymphonyIssueCatalogController(
+            startupService: makeStartupService(
+                environment: environment
+            ),
             issueCatalogService: SymphonyIssueCatalogService(
-                trackerConfigurationPort: SymphonyIssueCatalogTrackerConfigurationPortAdapter(
-                    resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase
-                ),
                 fetchIssuesUseCase: FetchSymphonyIssuesUseCase(
                     issueTrackerReadPort: SymphonyFallbackIssueTrackerPortAdapter(
                         trackerAuthPort: trackerAuthPortAdapter,
@@ -102,7 +118,8 @@ public enum SymphonyUIDI {
                         )
                     )
                 )
-            )
+            ),
+            displayPreferenceService: displayPreferenceService
         )
     }
 
@@ -117,6 +134,40 @@ public enum SymphonyUIDI {
                     codexConnectionPort: SymphonyCodexConnectionGateway()
                 )
             )
+        )
+    }
+
+    private static func makeStartupService(
+        environment: [String: String]
+    ) -> SymphonyStartupService {
+        let trackerAuthPortAdapter = SymphonyLinearTrackerAuthPortAdapter(
+            environment: environment
+        )
+        let workspaceTrackerBindingRepository = SymphonyWorkspaceTrackerBindingRepository()
+        let resolveWorkflowConfigurationUseCase = ResolveSymphonyWorkflowConfigurationUseCase(
+            workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(
+                environment: environment
+            ),
+            configResolverPort: SymphonyConfigResolverPortAdapter(
+                environment: environment
+            )
+        )
+        let workspaceBindingResolutionService = SymphonyWorkspaceBindingResolutionService(
+            queryWorkspaceTrackerBindingsUseCase: QuerySymphonyWorkspaceTrackerBindingsUseCase(
+                workspaceTrackerBindingPort: workspaceTrackerBindingRepository
+            )
+        )
+
+        return SymphonyStartupService(
+            workspaceBindingResolutionService: workspaceBindingResolutionService,
+            resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase,
+            validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase(
+                startupConfigurationValidatorPort: ValidateSymphonyStartupConfigurationPortAdapter()
+            ),
+            validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase(
+                trackerAuthPort: trackerAuthPortAdapter
+            ),
+            startupStateTransition: SymphonyStartupStateTransition()
         )
     }
 }

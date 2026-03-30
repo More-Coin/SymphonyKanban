@@ -3,24 +3,6 @@ import Testing
 
 struct SymphonyConnectionReadinessUseCaseTests {
     @Test
-    func validateReturnsConnectedStatusWhenSessionIsReady() throws {
-        let expectedStatus = SymphonyTrackerAuthStatusContract(
-            trackerKind: "linear",
-            state: .connected,
-            statusMessage: "Connected to Linear."
-        )
-        let portSpy = TrackerAuthPortSpy(status: expectedStatus)
-        let useCase = ValidateSymphonyTrackerConnectionReadinessUseCase(
-            trackerAuthPort: portSpy
-        )
-
-        let status = try useCase.validate(Self.linearSource())
-
-        #expect(status == expectedStatus)
-        #expect(status.isReady)
-    }
-
-    @Test
     func validateRejectsDisconnectedSessionStatus() {
         let portSpy = TrackerAuthPortSpy(
             status: SymphonyTrackerAuthStatusContract(

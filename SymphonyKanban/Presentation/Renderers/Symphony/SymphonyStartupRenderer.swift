@@ -4,13 +4,29 @@ public struct SymphonyStartupRenderer {
     public init() {}
 
     public func render(_ result: SymphonyStartupResultContract) -> Int32 {
-        print(
-            startupLifecycleLine(
-                outcome: "completed",
-                details: "workflow_path=\"\(escapedValue(result.resolvedWorkflowPath))\""
+        switch result.state {
+        case .ready:
+            print(
+                startupLifecycleLine(
+                    outcome: "completed",
+                    details: """
+                    startup_state=\(result.state.rawValue) \
+                    active_bindings=\(result.activeBindingCount) \
+                    ready_bindings=\(result.readyBindingCount) \
+                    failed_bindings=\(result.failedBindingCount)
+                    """
+                )
             )
-        )
-        return EXIT_SUCCESS
+            return EXIT_SUCCESS
+        case .setupRequired:
+            print(
+                startupLifecycleLine(
+                    outcome: "blocked",
+                    details: "startup_state=\(result.state.rawValue)"
+                )
+            )
+            return EXIT_FAILURE
+        }
     }
 
     public func renderError(_ error: any Error) -> Int32 {
@@ -58,7 +74,7 @@ public struct SymphonyStartupRenderer {
 
         return details.joined(separator: " ")
     }
-
+    
     private func escapedValue(_ value: String) -> String {
         value
             .replacingOccurrences(of: "\\", with: "\\\\")

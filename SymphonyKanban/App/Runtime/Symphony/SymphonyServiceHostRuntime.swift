@@ -2,29 +2,22 @@ import Foundation
 
 struct SymphonyServiceHostRuntime {
     typealias StartRuntime = @Sendable (
-        SymphonyWorkspaceLocatorContract,
-        SymphonyWorkflowConfigurationResultContract
+        SymphonyActiveWorkspaceBindingContextContract
     ) -> Void
     typealias KeepRunning = @Sendable () -> Int32
 
-    private let resolveWorkflowConfigurationUseCase: ResolveSymphonyWorkflowConfigurationUseCase
-    private let validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase
-    private let validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase
+    private let startupService: SymphonyStartupService
     private let renderer: SymphonyStartupRenderer
     private let startRuntime: StartRuntime
     private let keepRunning: KeepRunning
 
     init(
-        resolveWorkflowConfigurationUseCase: ResolveSymphonyWorkflowConfigurationUseCase,
-        validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase,
-        validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase,
+        startupService: SymphonyStartupService,
         renderer: SymphonyStartupRenderer,
         startRuntime: @escaping StartRuntime,
         keepRunning: @escaping KeepRunning
     ) {
-        self.resolveWorkflowConfigurationUseCase = resolveWorkflowConfigurationUseCase
-        self.validateStartupConfigurationUseCase = validateStartupConfigurationUseCase
-        self.validateTrackerConnectionUseCase = validateTrackerConnectionUseCase
+        self.startupService = startupService
         self.renderer = renderer
         self.startRuntime = startRuntime
         self.keepRunning = keepRunning
@@ -36,25 +29,47 @@ struct SymphonyServiceHostRuntime {
                 arguments: arguments,
                 currentWorkingDirectoryPath: FileManager.default.currentDirectoryPath
             )
-            let workspaceLocator = command.workspaceLocatorContract()
+            let executionResult = try startupService.execute(command.workspaceLocatorContract())
+            let exitCode = renderer.render(executionResult.result)
 
-            let workflowConfiguration = try resolveWorkflowConfigurationUseCase.resolveValidated(
-                workspaceLocator,
-                validateStartupConfigurationUseCase: validateStartupConfigurationUseCase
-            )
-            let trackerAuthStatus = try validateTrackerConnectionUseCase.validate(
-                workflowConfiguration.serviceConfig.tracker
-            )
-            let startupResult = SymphonyStartupResultContract(
-                resolvedWorkflowPath: workflowConfiguration.workflowDefinition.resolvedPath,
-                trackerAuthStatus: trackerAuthStatus
-            )
+            guard executionResult.result.state == .ready else {
+                return exitCode
+            }
 
-            _ = renderer.render(startupResult)
-            startRuntime(workspaceLocator, workflowConfiguration)
+            guard let primaryBindingContext = primaryBindingContext(
+                from: executionResult.activeBindings,
+                matching: command.workspaceLocatorContract().currentWorkingDirectoryPath
+            ) else {
+                return EXIT_FAILURE
+            }
+
+            startRuntime(primaryBindingContext)
             return keepRunning()
         } catch {
             return renderer.renderError(error)
         }
+    }
+
+    private func primaryBindingContext(
+        from activeBindings: [SymphonyActiveWorkspaceBindingContextContract],
+        matching workspacePath: String
+    ) -> SymphonyActiveWorkspaceBindingContextContract? {
+        let normalizedWorkspacePath = normalizedPath(from: workspacePath)
+
+        return activeBindings.first {
+            $0.isReady
+                && normalizedPath(from: $0.workspaceBinding.workspacePath) == normalizedWorkspacePath
+        }
+    }
+
+    private func normalizedPath(
+        from rawPath: String
+    ) -> String {
+        let trimmedPath = rawPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        let homeExpandedPath = NSString(string: trimmedPath).expandingTildeInPath
+        return URL(fileURLWithPath: homeExpandedPath)
+            .resolvingSymlinksInPath()
+            .standardizedFileURL
+            .path
     }
 }

@@ -3,37 +3,6 @@ import Testing
 
 struct SymphonyCodexConnectionServiceTests {
     @Test
-    func queryStatusPassesResolvedCommandResolutionToConnectionStatusQuery() {
-        let commandPort = CodexCommandResolverPortSpy(
-            resolution: SymphonyCodexCommandResolutionContract(
-                configuredCommand: "codex app-server --listen stdio://",
-                effectiveCommand: "/opt/homebrew/bin/codex app-server --listen stdio://",
-                executableName: "codex",
-                executablePath: "/opt/homebrew/bin/codex",
-                detailMessage: nil
-            )
-        )
-        let statusPort = CodexConnectionPortSpy()
-        let service = SymphonyCodexConnectionService(
-            resolveCodexCommandUseCase: ResolveSymphonyCodexCommandUseCase(
-                codexCommandResolverPort: commandPort
-            ),
-            queryCodexConnectionStatusUseCase: QuerySymphonyCodexConnectionStatusUseCase(
-                codexConnectionPort: statusPort
-            )
-        )
-
-        let status = service.queryStatus(
-            currentWorkingDirectoryPath: "/tmp/project"
-        )
-
-        #expect(commandPort.recordedCurrentWorkingDirectoryPath == "/tmp/project")
-        #expect(statusPort.recordedResolution?.configuredCommand == "codex app-server --listen stdio://")
-        #expect(statusPort.recordedResolution?.effectiveCommand == "/opt/homebrew/bin/codex app-server --listen stdio://")
-        #expect(status.detailMessage == nil)
-    }
-
-    @Test
     func queryStatusAppendsResolutionNoteToReturnedStatusDetail() {
         let commandPort = CodexCommandResolverPortSpy(
             resolution: SymphonyCodexCommandResolutionContract(

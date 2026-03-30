@@ -78,14 +78,15 @@ struct SymphonyCLIDI {
         )
 
         return SymphonyServiceHostRuntime(
-            resolveWorkflowConfigurationUseCase: hostStartupComponents.resolveWorkflowConfigurationUseCase,
-            validateStartupConfigurationUseCase: hostStartupComponents.validateStartupConfigurationUseCase,
-            validateTrackerConnectionUseCase: hostStartupComponents.validateTrackerConnectionUseCase,
+            startupService: hostStartupComponents.startupService,
             renderer: SymphonyStartupRenderer(),
-            startRuntime: { workspaceLocator, workflowConfiguration in
+            startRuntime: { bindingContext in
+                guard let workflowConfiguration = bindingContext.workflowConfiguration else {
+                    return
+                }
                 Task {
                     await runtimeService.start(
-                        workspaceLocator: workspaceLocator,
+                        workspaceLocator: bindingContext.effectiveWorkspaceLocator,
                         initialConfiguration: workflowConfiguration
                     )
                 }
@@ -100,6 +101,8 @@ struct SymphonyCLIDI {
         resolveWorkflowConfigurationUseCase: ResolveSymphonyWorkflowConfigurationUseCase,
         validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase,
         validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase,
+        workspaceBindingResolutionService: SymphonyWorkspaceBindingResolutionService,
+        startupStateTransition: SymphonyStartupStateTransition,
         dispatchPreflightValidationService: SymphonyDispatchPreflightValidationService,
         startupService: SymphonyStartupService
     ) {
@@ -107,9 +110,15 @@ struct SymphonyCLIDI {
         let trackerAuthPortAdapter = SymphonyLinearTrackerAuthPortAdapter(
             environment: environment
         )
+        let workspaceTrackerBindingRepository = SymphonyWorkspaceTrackerBindingRepository()
         let resolveWorkflowConfigurationUseCase = ResolveSymphonyWorkflowConfigurationUseCase(
             workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(),
             configResolverPort: SymphonyConfigResolverPortAdapter()
+        )
+        let workspaceBindingResolutionService = SymphonyWorkspaceBindingResolutionService(
+            queryWorkspaceTrackerBindingsUseCase: QuerySymphonyWorkspaceTrackerBindingsUseCase(
+                workspaceTrackerBindingPort: workspaceTrackerBindingRepository
+            )
         )
         let validateStartupConfigurationUseCase = ValidateSymphonyStartupConfigurationUseCase(
             startupConfigurationValidatorPort: ValidateSymphonyStartupConfigurationPortAdapter()
@@ -122,15 +131,20 @@ struct SymphonyCLIDI {
             validateStartupConfigurationUseCase: validateStartupConfigurationUseCase,
             validateTrackerConnectionUseCase: validateTrackerConnectionUseCase
         )
+        let startupStateTransition = SymphonyStartupStateTransition()
         let startupService = SymphonyStartupService(
+            workspaceBindingResolutionService: workspaceBindingResolutionService,
             resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase,
             validateStartupConfigurationUseCase: validateStartupConfigurationUseCase,
-            validateTrackerConnectionUseCase: validateTrackerConnectionUseCase
+            validateTrackerConnectionUseCase: validateTrackerConnectionUseCase,
+            startupStateTransition: startupStateTransition
         )
         return (
             resolveWorkflowConfigurationUseCase,
             validateStartupConfigurationUseCase,
             validateTrackerConnectionUseCase,
+            workspaceBindingResolutionService,
+            startupStateTransition,
             dispatchPreflightValidationService,
             startupService
         )

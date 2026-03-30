@@ -71,11 +71,21 @@ public struct SymphonyKanbanCardView: View {
     // MARK: - Title
 
     private var titleRow: some View {
-        Text(viewModel.title)
-            .font(SymphonyDesignStyle.Typography.headline)
-            .foregroundStyle(SymphonyDesignStyle.Text.primary)
-            .lineLimit(2)
-            .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: SymphonyDesignStyle.Spacing.xxs) {
+            Text(viewModel.title)
+                .font(SymphonyDesignStyle.Typography.headline)
+                .foregroundStyle(SymphonyDesignStyle.Text.primary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let scopeName = viewModel.scopeName,
+               scopeName.isEmpty == false {
+                Text(scopeName)
+                    .font(SymphonyDesignStyle.Typography.micro)
+                    .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
+                    .lineLimit(1)
+            }
+        }
     }
 
     // MARK: - Bottom Row: Agent + Labels + Token Count

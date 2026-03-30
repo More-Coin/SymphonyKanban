@@ -14,6 +14,8 @@ public enum SymphonyWorkspaceInfrastructureError: StructuredErrorProtocol, Local
     case bindingLoadFailed(path: String, details: String)
     case bindingSaveFailed(path: String, details: String)
     case bindingRemovalFailed(path: String, details: String)
+    case displayPreferenceLoadFailed(path: String, details: String)
+    case displayPreferenceSaveFailed(path: String, details: String)
 
     public var code: String {
         switch self {
@@ -43,6 +45,10 @@ public enum SymphonyWorkspaceInfrastructureError: StructuredErrorProtocol, Local
             return "symphony.workspace.binding_save_failed"
         case .bindingRemovalFailed:
             return "symphony.workspace.binding_removal_failed"
+        case .displayPreferenceLoadFailed:
+            return "symphony.workspace.display_preference_load_failed"
+        case .displayPreferenceSaveFailed:
+            return "symphony.workspace.display_preference_save_failed"
         }
     }
 
@@ -74,6 +80,10 @@ public enum SymphonyWorkspaceInfrastructureError: StructuredErrorProtocol, Local
             return "The workspace binding could not be saved."
         case .bindingRemovalFailed:
             return "The workspace binding could not be removed."
+        case .displayPreferenceLoadFailed:
+            return "The issue-catalog display preference could not be loaded."
+        case .displayPreferenceSaveFailed:
+            return "The issue-catalog display preference could not be saved."
         }
     }
 
@@ -92,7 +102,9 @@ public enum SymphonyWorkspaceInfrastructureError: StructuredErrorProtocol, Local
              .hookTimedOut,
              .bindingLoadFailed,
              .bindingSaveFailed,
-             .bindingRemovalFailed:
+             .bindingRemovalFailed,
+             .displayPreferenceLoadFailed,
+             .displayPreferenceSaveFailed:
             return true
         }
     }
@@ -119,7 +131,9 @@ public enum SymphonyWorkspaceInfrastructureError: StructuredErrorProtocol, Local
             return details
         case .bindingLoadFailed(let path, let details),
              .bindingSaveFailed(let path, let details),
-             .bindingRemovalFailed(let path, let details):
+             .bindingRemovalFailed(let path, let details),
+             .displayPreferenceLoadFailed(let path, let details),
+             .displayPreferenceSaveFailed(let path, let details):
             return "Path: \(path). \(details)"
         }
     }

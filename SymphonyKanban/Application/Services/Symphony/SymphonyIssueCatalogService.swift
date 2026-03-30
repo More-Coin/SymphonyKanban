@@ -1,38 +1,83 @@
 import Foundation
 
 public struct SymphonyIssueCatalogService {
-    private let trackerConfigurationPort: any SymphonyIssueCatalogTrackerConfigurationPortProtocol
     private let fetchIssuesUseCase: FetchSymphonyIssuesUseCase
 
     public init(
-        trackerConfigurationPort: any SymphonyIssueCatalogTrackerConfigurationPortProtocol,
         fetchIssuesUseCase: FetchSymphonyIssuesUseCase
     ) {
-        self.trackerConfigurationPort = trackerConfigurationPort
         self.fetchIssuesUseCase = fetchIssuesUseCase
     }
 
     @MainActor
     public func queryIssues(
-        currentWorkingDirectoryPath: String,
-        explicitWorkflowPath: String? = nil
+        activeBindings: [SymphonyActiveWorkspaceBindingContextContract]
     ) async throws -> SymphonyIssueCollectionContract {
-        let trackerConfiguration = trackerConfigurationPort.resolveTrackerConfiguration(
-            currentWorkingDirectoryPath: currentWorkingDirectoryPath,
-            explicitWorkflowPath: explicitWorkflowPath
-        )
-        let stateTypes = requestedStateTypes(using: trackerConfiguration)
+        var bindingResults: [SymphonyIssueCatalogBindingResultContract] = []
+        bindingResults.reserveCapacity(activeBindings.count)
 
-        if stateTypes.isEmpty {
-            return try await fetchIssuesUseCase.fetchCandidateIssues(
-                using: trackerConfiguration
+        for bindingContext in activeBindings {
+            if bindingContext.isReady == false || bindingContext.workflowConfiguration == nil {
+                bindingResults.append(
+                    SymphonyIssueCatalogBindingResultContract(
+                        bindingContext: bindingContext,
+                        issues: [],
+                        loadState: .failed,
+                        loadError: bindingContext.startupFailure
+                    )
+                )
+                continue
+            }
+
+            let trackerConfiguration = bindingContext.workflowConfiguration!.serviceConfig.tracker
+            let stateTypes = requestedStateTypes(using: trackerConfiguration)
+
+            do {
+                let collection: SymphonyIssueCollectionContract
+                if stateTypes.isEmpty {
+                    collection = try await fetchIssuesUseCase.fetchCandidateIssues(
+                        using: trackerConfiguration
+                    )
+                } else {
+                    collection = try await fetchIssuesUseCase.fetchIssues(
+                        stateTypes: stateTypes,
+                        using: trackerConfiguration
+                    )
+                }
+
+                bindingResults.append(
+                    SymphonyIssueCatalogBindingResultContract(
+                        bindingContext: bindingContext,
+                        issues: collection.issues,
+                        loadState: .loaded
+                    )
+                )
+            } catch {
+                bindingResults.append(
+                    SymphonyIssueCatalogBindingResultContract(
+                        bindingContext: bindingContext,
+                        issues: [],
+                        loadState: .failed,
+                        loadError: failureSummary(from: error)
+                    )
+                )
+            }
+        }
+
+        return SymphonyIssueCollectionContract(bindingResults: bindingResults)
+    }
+
+    private func failureSummary(
+        from error: any Error
+    ) -> SymphonyFailureSummaryContract {
+        if let structuredError = error as? any StructuredErrorProtocol {
+            return SymphonyFailureSummaryContract(
+                message: structuredError.message,
+                details: structuredError.details
             )
         }
 
-        return try await fetchIssuesUseCase.fetchIssues(
-            stateTypes: stateTypes,
-            using: trackerConfiguration
-        )
+        return SymphonyFailureSummaryContract(message: error.localizedDescription)
     }
 
     private func requestedStateTypes(

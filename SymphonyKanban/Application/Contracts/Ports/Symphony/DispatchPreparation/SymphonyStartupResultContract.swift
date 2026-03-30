@@ -1,12 +1,18 @@
 public struct SymphonyStartupResultContract: Equatable, Sendable {
-    public let resolvedWorkflowPath: String
-    public let trackerAuthStatus: SymphonyTrackerAuthStatusContract
+    public let state: SymphonyStartupStateContract
+    public let activeBindingCount: Int
+    public let readyBindingCount: Int
+    public let failedBindingCount: Int
 
     public init(
-        resolvedWorkflowPath: String,
-        trackerAuthStatus: SymphonyTrackerAuthStatusContract
+        state: SymphonyStartupStateContract,
+        activeBindingCount: Int,
+        readyBindingCount: Int,
+        failedBindingCount: Int
     ) {
-        self.resolvedWorkflowPath = resolvedWorkflowPath
-        self.trackerAuthStatus = trackerAuthStatus
+        self.state = state
+        self.activeBindingCount = activeBindingCount
+        self.readyBindingCount = readyBindingCount
+        self.failedBindingCount = failedBindingCount
     }
 }

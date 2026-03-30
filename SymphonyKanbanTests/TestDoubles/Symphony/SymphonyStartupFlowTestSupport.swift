@@ -4,16 +4,25 @@ import Foundation
 enum SymphonyStartupFlowTestSupport {
     private static let processMutationLock = NSRecursiveLock()
 
-    static func makeController() -> SymphonyStartupController {
+    static func makeController(
+        environment: [String: String] = [:],
+        trackerAuthPort: any SymphonyTrackerAuthPortProtocol = TrackerAuthPortSpy(),
+        workspaceTrackerBindingPort: any SymphonyWorkspaceTrackerBindingPortProtocol = WorkspaceTrackerBindingPortSpy()
+    ) -> SymphonyStartupController {
         SymphonyStartupController(
-            startupService: makeStartupService(),
+            startupService: makeStartupService(
+                environment: environment,
+                trackerAuthPort: trackerAuthPort,
+                workspaceTrackerBindingPort: workspaceTrackerBindingPort
+            ),
             renderer: SymphonyStartupRenderer()
         )
     }
 
     static func makeStartupService(
         environment: [String: String] = [:],
-        trackerAuthPort: any SymphonyTrackerAuthPortProtocol = TrackerAuthPortSpy()
+        trackerAuthPort: any SymphonyTrackerAuthPortProtocol = TrackerAuthPortSpy(),
+        workspaceTrackerBindingPort: any SymphonyWorkspaceTrackerBindingPortProtocol = WorkspaceTrackerBindingPortSpy()
     ) -> SymphonyStartupService {
         let resolveWorkflowConfigurationUseCase = ResolveSymphonyWorkflowConfigurationUseCase(
             workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(environment: environment),
@@ -23,11 +32,17 @@ enum SymphonyStartupFlowTestSupport {
             startupConfigurationValidatorPort: ValidateSymphonyStartupConfigurationPortAdapter()
         )
         return SymphonyStartupService(
+            workspaceBindingResolutionService: SymphonyWorkspaceBindingResolutionService(
+                queryWorkspaceTrackerBindingsUseCase: QuerySymphonyWorkspaceTrackerBindingsUseCase(
+                    workspaceTrackerBindingPort: workspaceTrackerBindingPort
+                )
+            ),
             resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase,
             validateStartupConfigurationUseCase: validateStartupConfigurationUseCase,
             validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase(
                 trackerAuthPort: trackerAuthPort
-            )
+            ),
+            startupStateTransition: SymphonyStartupStateTransition()
         )
     }
 
@@ -56,22 +71,15 @@ enum SymphonyStartupFlowTestSupport {
     static func makeHostRuntime(
         environment: [String: String] = [:],
         trackerAuthPort: any SymphonyTrackerAuthPortProtocol = TrackerAuthPortSpy(),
+        workspaceTrackerBindingPort: any SymphonyWorkspaceTrackerBindingPortProtocol = WorkspaceTrackerBindingPortSpy(),
         startRuntime: @escaping SymphonyServiceHostRuntime.StartRuntime,
         keepRunning: @escaping SymphonyServiceHostRuntime.KeepRunning
     ) -> SymphonyServiceHostRuntime {
-        let resolveWorkflowConfigurationUseCase = ResolveSymphonyWorkflowConfigurationUseCase(
-            workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(environment: environment),
-            configResolverPort: SymphonyConfigResolverPortAdapter(environment: environment)
-        )
-        let validateStartupConfigurationUseCase = ValidateSymphonyStartupConfigurationUseCase(
-            startupConfigurationValidatorPort: ValidateSymphonyStartupConfigurationPortAdapter()
-        )
-
         return SymphonyServiceHostRuntime(
-            resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase,
-            validateStartupConfigurationUseCase: validateStartupConfigurationUseCase,
-            validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase(
-                trackerAuthPort: trackerAuthPort
+            startupService: makeStartupService(
+                environment: environment,
+                trackerAuthPort: trackerAuthPort,
+                workspaceTrackerBindingPort: workspaceTrackerBindingPort
             ),
             renderer: SymphonyStartupRenderer(),
             startRuntime: startRuntime,
@@ -97,6 +105,24 @@ enum SymphonyStartupFlowTestSupport {
             withIntermediateDirectories: true
         )
         return directoryURL
+    }
+
+    static func makeWorkspaceBinding(
+        workspacePath: String,
+        explicitWorkflowPath: String? = nil,
+        trackerKind: String = "linear",
+        scopeKind: String = "team",
+        scopeIdentifier: String = "team-id",
+        scopeName: String = "Team"
+    ) -> SymphonyWorkspaceTrackerBindingContract {
+        SymphonyWorkspaceTrackerBindingContract(
+            workspacePath: workspacePath,
+            explicitWorkflowPath: explicitWorkflowPath,
+            trackerKind: trackerKind,
+            scopeKind: scopeKind,
+            scopeIdentifier: scopeIdentifier,
+            scopeName: scopeName
+        )
     }
 
     static func withTemporaryCurrentDirectory<T>(
