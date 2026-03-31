@@ -23,6 +23,7 @@ public struct SymphonyConfigResolverPortAdapter: SymphonyConfigResolverPortProto
                 kind: string(for: "kind", in: tracker),
                 endpoint: resolvedTrackerEndpoint(in: tracker),
                 projectSlug: string(for: "project_slug", in: tracker),
+                teamID: string(for: "team_id", in: tracker),
                 activeStateTypes: stringArray(for: "active_state_types", in: tracker)
                     ?? ["backlog", "unstarted", "started"],
                 terminalStateTypes: stringArray(for: "terminal_state_types", in: tracker)

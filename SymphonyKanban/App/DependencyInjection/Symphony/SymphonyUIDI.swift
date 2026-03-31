@@ -52,6 +52,8 @@ public enum SymphonyUIDI {
         let browserRuntime = SymphonyTrackerAuthBrowserRuntime()
         let callbackPort: any SymphonyTrackerAuthCallbackPortProtocol = SymphonyLinearOAuthLoopbackGateway()
 
+        let folderPickerRuntime = makeWorkspaceFolderPickerRuntime()
+
         return SymphonyNavigationRoutes(
             issueDetailController: SymphonyIssueDetailController(
                 runtimeQueryService: runtimeQueryService
@@ -63,6 +65,18 @@ public enum SymphonyUIDI {
                 environment: environment
             ),
             codexConnectionController: makeCodexConnectionController(),
+            bindingManagementController: makeWorkspaceBindingManagementController(
+                environment: environment
+            ),
+            workspaceSelectionController: makeWorkspaceSelectionController(
+                environment: environment
+            ),
+            workspaceBindingSetupController: makeWorkspaceBindingSetupController(),
+            chooseWorkspaceDirectory: { startingDirectoryPath in
+                folderPickerRuntime.chooseWorkspaceDirectory(
+                    startingDirectoryPath: startingDirectoryPath
+                )
+            },
             launchTrackerAuthorizationURL: { url in
                 browserRuntime.open(url)
             },
@@ -127,7 +141,7 @@ public enum SymphonyUIDI {
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> SymphonyWorkspaceSelectionController {
         SymphonyWorkspaceSelectionController(
-            workspaceSelectionService: SymphonyWorkspaceSelectionService(
+            workspaceProvisioningService: SymphonyWorkspaceWorkflowProvisioningService(
                 resolveWorkflowConfigurationUseCase: ResolveSymphonyWorkflowConfigurationUseCase(
                     workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(
                         environment: environment
@@ -135,6 +149,26 @@ public enum SymphonyUIDI {
                     configResolverPort: SymphonyConfigResolverPortAdapter(
                         environment: environment
                     )
+                ),
+                validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase(
+                    startupConfigurationValidatorPort: ValidateSymphonyStartupConfigurationPortAdapter()
+                ),
+                workflowWritePort: SymphonyWorkflowWritePortAdapter(),
+                workflowTemplatePort: SymphonyWorkflowTemplatePortAdapter()
+            )
+        )
+    }
+
+    public static func makeWorkspaceSelectionService(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> SymphonyWorkspaceSelectionService {
+        SymphonyWorkspaceSelectionService(
+            resolveWorkflowConfigurationUseCase: ResolveSymphonyWorkflowConfigurationUseCase(
+                workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(
+                    environment: environment
+                ),
+                configResolverPort: SymphonyConfigResolverPortAdapter(
+                    environment: environment
                 )
             )
         )
@@ -256,6 +290,41 @@ public enum SymphonyUIDI {
                     codexConnectionPort: SymphonyCodexConnectionGateway()
                 )
             )
+        )
+    }
+
+    public static func makeWorkspaceBindingManagementController(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> SymphonyWorkspaceBindingManagementController {
+        let workspaceTrackerBindingRepository = SymphonyWorkspaceTrackerBindingRepository()
+        let trackerAuthPortAdapter = SymphonyLinearTrackerAuthPortAdapter(
+            environment: environment
+        )
+        let resolveWorkflowConfigurationUseCase = ResolveSymphonyWorkflowConfigurationUseCase(
+            workflowLoaderPort: SymphonyWorkflowLoaderPortAdapter(
+                environment: environment
+            ),
+            configResolverPort: SymphonyConfigResolverPortAdapter(
+                environment: environment
+            )
+        )
+        return SymphonyWorkspaceBindingManagementController(
+            managementService: SymphonyWorkspaceBindingManagementService(
+                queryWorkspaceTrackerBindingsUseCase: QuerySymphonyWorkspaceTrackerBindingsUseCase(
+                    workspaceTrackerBindingPort: workspaceTrackerBindingRepository
+                ),
+                removeBindingUseCase: RemoveSymphonyWorkspaceTrackerBindingUseCase(
+                    workspaceTrackerBindingPort: workspaceTrackerBindingRepository
+                ),
+                resolveWorkflowConfigurationUseCase: resolveWorkflowConfigurationUseCase,
+                validateStartupConfigurationUseCase: ValidateSymphonyStartupConfigurationUseCase(
+                    startupConfigurationValidatorPort: ValidateSymphonyStartupConfigurationPortAdapter()
+                ),
+                validateTrackerConnectionUseCase: ValidateSymphonyTrackerConnectionReadinessUseCase(
+                    trackerAuthPort: trackerAuthPortAdapter
+                )
+            ),
+            setupController: makeWorkspaceBindingSetupController()
         )
     }
 

@@ -27,7 +27,8 @@ public struct SymphonyWorkspaceSelectionService {
 
         return SymphonyWorkspaceSelectionResultContract(
             workspaceLocator: workspaceLocator,
-            resolvedWorkflowPath: workflowConfiguration.workflowDefinition.resolvedPath
+            resolvedWorkflowPath: workflowConfiguration.workflowDefinition.resolvedPath,
+            workflowProvisioningStatus: .existing
         )
     }
 

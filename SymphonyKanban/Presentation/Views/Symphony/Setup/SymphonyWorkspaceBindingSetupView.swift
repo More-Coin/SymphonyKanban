@@ -162,6 +162,7 @@ public struct SymphonyWorkspaceBindingSetupView: View {
                 SymphonySetupWorkspaceSelectionStepView(
                     workspaceSelectionController: workspaceSelectionController,
                     chooseWorkspaceDirectory: chooseWorkspaceDirectory,
+                    selectedScope: selectedScope,
                     selectedWorkspace: $selectedWorkspace,
                     onContinue: { advanceTo(.confirmation) }
                 )

@@ -17,9 +17,11 @@ public struct SymphonyIssueTrackerSourceSelectionPolicy: Sendable {
             .lowercased()
         let projectSlug = trackerConfiguration.projectSlug?
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        let teamID = trackerConfiguration.teamID?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard trackerKind == "linear",
-              projectSlug?.isEmpty == false,
+              (projectSlug?.isEmpty == false || teamID?.isEmpty == false),
               authStatus?.state == .connected else {
             return .mock
         }

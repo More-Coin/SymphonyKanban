@@ -1,15 +1,15 @@
 @MainActor
 public struct SymphonyWorkspaceSelectionController {
-    private let workspaceSelectionService: SymphonyWorkspaceSelectionService
+    private let workspaceProvisioningService: SymphonyWorkspaceWorkflowProvisioningService
     private let presenter: SymphonyWorkspaceSelectionPresenter
     private let previewViewModel: SymphonyWorkspaceSelectionViewModel?
 
     public init(
-        workspaceSelectionService: SymphonyWorkspaceSelectionService,
+        workspaceProvisioningService: SymphonyWorkspaceWorkflowProvisioningService,
         presenter: SymphonyWorkspaceSelectionPresenter? = nil,
         previewViewModel: SymphonyWorkspaceSelectionViewModel? = nil
     ) {
-        self.workspaceSelectionService = workspaceSelectionService
+        self.workspaceProvisioningService = workspaceProvisioningService
         self.presenter = presenter ?? SymphonyWorkspaceSelectionPresenter()
         self.previewViewModel = previewViewModel
     }
@@ -18,7 +18,7 @@ public struct SymphonyWorkspaceSelectionController {
         _ previewViewModel: SymphonyWorkspaceSelectionViewModel
     ) -> SymphonyWorkspaceSelectionController {
         SymphonyWorkspaceSelectionController(
-            workspaceSelectionService: workspaceSelectionService,
+            workspaceProvisioningService: workspaceProvisioningService,
             presenter: presenter,
             previewViewModel: previewViewModel
         )
@@ -30,7 +30,8 @@ public struct SymphonyWorkspaceSelectionController {
 
     public func selectWorkspace(
         workspacePath: String,
-        explicitWorkflowPath: String? = nil
+        explicitWorkflowPath: String? = nil,
+        selectedScope: SymphonyTrackerScopeOptionContract
     ) -> SymphonyWorkspaceSelectionViewModel {
         if let previewViewModel {
             return previewViewModel
@@ -38,14 +39,52 @@ public struct SymphonyWorkspaceSelectionController {
 
         do {
             return presenter.present(
-                try workspaceSelectionService.selectWorkspace(
+                try workspaceProvisioningService.provisionWorkspace(
                     workspacePath: workspacePath,
-                    explicitWorkflowPath: explicitWorkflowPath
+                    explicitWorkflowPath: explicitWorkflowPath,
+                    selectedScope: selectedScope
                 )
             )
         } catch {
             return presenter.presentError(error)
         }
+    }
+
+    public func selectWorkspace(
+        workspacePath: String,
+        explicitWorkflowPath: String? = nil,
+        selectedScope: SymphonySetupScopeSelectionViewModel.Option
+    ) -> SymphonyWorkspaceSelectionViewModel {
+        selectWorkspace(
+            workspacePath: workspacePath,
+            explicitWorkflowPath: explicitWorkflowPath,
+            selectedScope: SymphonyTrackerScopeOptionContract(
+                id: selectedScope.id,
+                scopeKind: selectedScope.scopeKind,
+                scopeIdentifier: selectedScope.scopeIdentifier,
+                scopeName: selectedScope.scopeName,
+                detailText: selectedScope.detailText
+            )
+        )
+    }
+
+    public func selectWorkspace(
+        workspacePath: String,
+        explicitWorkflowPath: String? = nil,
+        scopeKind: String,
+        scopeIdentifier: String,
+        scopeName: String
+    ) -> SymphonyWorkspaceSelectionViewModel {
+        selectWorkspace(
+            workspacePath: workspacePath,
+            explicitWorkflowPath: explicitWorkflowPath,
+            selectedScope: SymphonyTrackerScopeOptionContract(
+                id: "\(scopeKind):\(scopeIdentifier)",
+                scopeKind: scopeKind,
+                scopeIdentifier: scopeIdentifier,
+                scopeName: scopeName
+            )
+        )
     }
 
     public func workspaceLocator(

@@ -1,9 +1,10 @@
 import Foundation
 
-public enum SymphonyStartupApplicationError: StructuredErrorProtocol, LocalizedError {
+public enum SymphonyStartupApplicationError: StructuredErrorProtocol, LocalizedError, Equatable {
     case missingTrackerKind
     case unsupportedTrackerKind(actualKind: String)
-    case missingTrackerProjectIdentifier
+    case missingTrackerScopeIdentifier
+    case ambiguousTrackerScopeIdentifier
     case missingAgentCommand
     case trackerAuthNotConnected(trackerKind: String)
     case trackerSessionStale(trackerKind: String)
@@ -14,8 +15,10 @@ public enum SymphonyStartupApplicationError: StructuredErrorProtocol, LocalizedE
             return "symphony.startup.missing_tracker_kind"
         case .unsupportedTrackerKind:
             return "symphony.startup.unsupported_tracker_kind"
-        case .missingTrackerProjectIdentifier:
-            return "symphony.startup.missing_tracker_project_identifier"
+        case .missingTrackerScopeIdentifier:
+            return "symphony.startup.missing_tracker_scope_identifier"
+        case .ambiguousTrackerScopeIdentifier:
+            return "symphony.startup.ambiguous_tracker_scope_identifier"
         case .missingAgentCommand:
             return "symphony.startup.missing_agent_command"
         case .trackerAuthNotConnected:
@@ -31,8 +34,10 @@ public enum SymphonyStartupApplicationError: StructuredErrorProtocol, LocalizedE
             return "The workflow configuration is missing `tracker.kind`."
         case .unsupportedTrackerKind:
             return "The workflow configuration uses an unsupported tracker kind."
-        case .missingTrackerProjectIdentifier:
-            return "The workflow configuration is missing the tracker project identifier."
+        case .missingTrackerScopeIdentifier:
+            return "The workflow configuration is missing the tracker scope identifier."
+        case .ambiguousTrackerScopeIdentifier:
+            return "The workflow configuration must define exactly one tracker scope identifier."
         case .missingAgentCommand:
             return "The workflow configuration is missing the agent launch command."
         case .trackerAuthNotConnected:
@@ -52,8 +57,10 @@ public enum SymphonyStartupApplicationError: StructuredErrorProtocol, LocalizedE
             return "Set the tracker kind in the workflow configuration."
         case .unsupportedTrackerKind(let actualKind):
             return "Received configured tracker kind `\(actualKind)`."
-        case .missingTrackerProjectIdentifier:
-            return "Set the tracker project identifier in the workflow configuration."
+        case .missingTrackerScopeIdentifier:
+            return "Set exactly one tracker scope identifier in the workflow configuration."
+        case .ambiguousTrackerScopeIdentifier:
+            return "Keep only one tracker scope identifier in the workflow configuration."
         case .missingAgentCommand:
             return "Set the agent launch command in the workflow configuration."
         case .trackerAuthNotConnected(let trackerKind):

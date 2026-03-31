@@ -33,6 +33,7 @@ struct SymphonyLinearTrackerScopeFetchTests {
                 kind: "linear",
                 endpoint: nil,
                 projectSlug: nil,
+                teamID: nil,
                 activeStateTypes: [],
                 terminalStateTypes: []
             )
@@ -120,6 +121,7 @@ struct SymphonyLinearTrackerScopeFetchTests {
                 kind: "linear",
                 endpoint: nil,
                 projectSlug: nil,
+                teamID: nil,
                 activeStateTypes: [],
                 terminalStateTypes: []
             )
@@ -158,6 +160,7 @@ struct SymphonyLinearTrackerScopeFetchTests {
                     kind: "linear",
                     endpoint: nil,
                     projectSlug: nil,
+                    teamID: nil,
                     activeStateTypes: [],
                     terminalStateTypes: []
                 )

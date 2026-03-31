@@ -42,16 +42,14 @@ struct LinearIssueTrackerRequestDefinitionModel {
         authorizationHeader: String,
         afterCursor: String?
     ) -> LinearIssueTrackerRequestDefinition {
-        makeRequestDefinition(
+        let scopeQuery = issueScopeQueryParts(for: configuration)
+
+        return makeRequestDefinition(
             using: configuration,
             authorizationHeader: authorizationHeader,
             operationName: "FetchCandidateIssues",
-            query: candidateIssuesQuery,
-            variables: [
-                "projectSlug": .string(configuration.projectSlug),
-                "stateTypes": .stringArray(configuration.activeStateTypes),
-                "after": afterCursor.map { .string($0) } ?? .null
-            ]
+            query: candidateIssuesQuery(using: scopeQuery),
+            variables: scopeQuery.variables(afterCursor: afterCursor, stateTypes: configuration.activeStateTypes)
         )
     }
 
@@ -61,16 +59,14 @@ struct LinearIssueTrackerRequestDefinitionModel {
         stateTypes: [String],
         afterCursor: String?
     ) -> LinearIssueTrackerRequestDefinition {
-        makeRequestDefinition(
+        let scopeQuery = issueScopeQueryParts(for: configuration)
+
+        return makeRequestDefinition(
             using: configuration,
             authorizationHeader: authorizationHeader,
             operationName: "FetchIssuesByStates",
-            query: issuesByStatesQuery,
-            variables: [
-                "projectSlug": .string(configuration.projectSlug),
-                "stateTypes": .stringArray(stateTypes),
-                "after": afterCursor.map { .string($0) } ?? .null
-            ]
+            query: issuesByStatesQuery(using: scopeQuery),
+            variables: scopeQuery.variables(afterCursor: afterCursor, stateTypes: stateTypes)
         )
     }
 
@@ -108,15 +104,18 @@ struct LinearIssueTrackerRequestDefinitionModel {
         )
     }
 
-    private var candidateIssuesQuery: String {
+    private func candidateIssuesQuery(
+        using scopeQuery: LinearIssueScopeQueryParts
+    ) -> String {
         """
-        query FetchCandidateIssues($projectSlug: String!, $stateTypes: [String!], $after: String) {
+        query FetchCandidateIssues(\(scopeQuery.operationVariableDeclaration), $stateTypes: [String!], $after: String) {
           issues(
+            \(scopeQuery.issueArgumentsClause)
             first: 50
             after: $after
             filter: {
               state: { type: { in: $stateTypes } }
-              project: { slugId: { eq: $projectSlug } }
+              \(scopeQuery.filterClause)
             }
           ) {
             nodes {
@@ -151,15 +150,18 @@ struct LinearIssueTrackerRequestDefinitionModel {
         """
     }
 
-    private var issuesByStatesQuery: String {
+    private func issuesByStatesQuery(
+        using scopeQuery: LinearIssueScopeQueryParts
+    ) -> String {
         """
-        query FetchIssuesByStates($projectSlug: String!, $stateTypes: [String!], $after: String) {
+        query FetchIssuesByStates(\(scopeQuery.operationVariableDeclaration), $stateTypes: [String!], $after: String) {
           issues(
+            \(scopeQuery.issueArgumentsClause)
             first: 50
             after: $after
             filter: {
               state: { type: { in: $stateTypes } }
-              project: { slugId: { eq: $projectSlug } }
+              \(scopeQuery.filterClause)
             }
           ) {
             nodes {
@@ -255,5 +257,33 @@ struct LinearIssueTrackerRequestDefinitionModel {
           }
         }
         """
+    }
+
+    private func issueScopeQueryParts(
+        for configuration: LinearNormalizedTrackerConfiguration
+    ) -> LinearIssueScopeQueryParts {
+        switch configuration.scope {
+        case .project(let slug):
+            return LinearIssueScopeQueryParts(
+                operationVariableDeclaration: "$projectSlug: String!",
+                issueArgumentsClause: "",
+                filterClause: "project: { slugId: { eq: $projectSlug } }",
+                scopeVariable: ("projectSlug", .string(slug))
+            )
+        case .team(let id):
+            return LinearIssueScopeQueryParts(
+                operationVariableDeclaration: "$teamId: ID!",
+                issueArgumentsClause: "",
+                filterClause: "team: { id: { eq: $teamId } }",
+                scopeVariable: ("teamId", .string(id))
+            )
+        case nil:
+            return LinearIssueScopeQueryParts(
+                operationVariableDeclaration: "$projectSlug: String!",
+                issueArgumentsClause: "",
+                filterClause: "project: { slugId: { eq: $projectSlug } }",
+                scopeVariable: ("projectSlug", .string(""))
+            )
+        }
     }
 }

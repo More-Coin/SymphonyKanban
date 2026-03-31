@@ -8,6 +8,7 @@ enum SymphonyCodexCommandTestSupport {
                 kind: "linear",
                 endpoint: "https://api.linear.app/graphql",
                 projectSlug: "test-project",
+                teamID: nil,
                 activeStateTypes: ["backlog"],
                 terminalStateTypes: ["completed"]
             ),

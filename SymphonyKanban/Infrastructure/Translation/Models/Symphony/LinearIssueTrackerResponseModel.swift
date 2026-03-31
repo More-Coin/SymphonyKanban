@@ -199,6 +199,25 @@ private func linearNormalizedOptional(
     return value
 }
 
+private enum LinearIssueTimestampParser {
+    static func internetDateTimeFormatter() -> ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }
+
+    static func fractionalSecondFormatter() -> ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }
+
+    static func date(from value: String) -> Date? {
+        fractionalSecondFormatter().date(from: value)
+            ?? internetDateTimeFormatter().date(from: value)
+    }
+}
+
 private extension LinearIssueNodeModel {
     func normalizedRequired(_ value: String?, field: String) -> String? {
         guard let value = linearNormalizedOptional(value) else {
@@ -220,9 +239,7 @@ private extension LinearIssueNodeModel {
             return nil
         }
 
-        let formatter = ISO8601DateFormatter()
-
-        guard let date = formatter.date(from: value) else {
+        guard let date = LinearIssueTimestampParser.date(from: value) else {
             throw SymphonyIssueTrackerInfrastructureError.linearUnknownPayload(
                 details: "The issue payload contained an invalid ISO-8601 timestamp for `\(field)`."
             )

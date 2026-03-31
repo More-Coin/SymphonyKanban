@@ -41,6 +41,7 @@ public struct SymphonySetupScopeSelectionController {
             kind: trackerKind,
             endpoint: nil,
             projectSlug: nil,
+            teamID: nil,
             activeStateTypes: [],
             terminalStateTypes: []
         )

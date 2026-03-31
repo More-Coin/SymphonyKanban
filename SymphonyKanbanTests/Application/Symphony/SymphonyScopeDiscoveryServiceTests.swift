@@ -49,6 +49,7 @@ struct SymphonyScopeDiscoveryServiceTests {
                 kind: " Linear ",
                 endpoint: nil,
                 projectSlug: nil,
+                teamID: nil,
                 activeStateTypes: [],
                 terminalStateTypes: []
             )

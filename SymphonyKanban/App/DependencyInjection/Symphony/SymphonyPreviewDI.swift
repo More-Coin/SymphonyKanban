@@ -75,6 +75,9 @@ public enum SymphonyPreviewDI {
                 ),
             authController: makeAuthController(state: .connected),
             codexConnectionController: makeCodexConnectionController(state: .connected),
+            bindingManagementController: makeWorkspaceBindingManagementController(),
+            workspaceSelectionController: makeWorkspaceSelectionController(),
+            workspaceBindingSetupController: makeWorkspaceBindingSetupController(),
             initialSelectedIssueIdentifier: selectedIssueIdentifier,
             failedBindingCount: failedBindingCount,
             activeBindingCount: activeBindingCount
@@ -150,14 +153,57 @@ public enum SymphonyPreviewDI {
                 SymphonyWorkspaceSelectionViewModel(
                     state: .selected,
                     title: "Select Workspace",
-                    message: "This workspace folder is ready to be saved with the selected tracker scope.",
+                    message: "Symphony created a new WORKFLOW.md file and validated this workspace folder.",
                     selection: .init(
                         id: currentWorkingDirectoryPath,
                         workspacePath: currentWorkingDirectoryPath,
                         explicitWorkflowPath: explicitWorkflowPath,
                         resolvedWorkflowPath: explicitWorkflowPath ?? "\(currentWorkingDirectoryPath)/WORKFLOW.md",
-                        workspaceName: URL(fileURLWithPath: currentWorkingDirectoryPath).lastPathComponent
+                        workspaceName: URL(fileURLWithPath: currentWorkingDirectoryPath).lastPathComponent,
+                        workflowProvisioningStatus: .created
                     )
+                )
+            )
+    }
+
+    public static func makeWorkspaceBindingManagementController() -> SymphonyWorkspaceBindingManagementController {
+        SymphonyUIDI.makeWorkspaceBindingManagementController()
+            .withPreviewViewModel(
+                SymphonyWorkspaceBindingManagementViewModel(
+                    title: "Workspace Bindings",
+                    subtitle: "Manage your saved workspace-to-tracker bindings.",
+                    cards: [
+                        .init(
+                            id: "/Preview/NaraIOS",
+                            scopeName: "Nara IOS",
+                            scopeKind: "team",
+                            scopeKindLabel: "Team",
+                            scopeIdentifier: "nara-ios",
+                            trackerKind: "linear",
+                            trackerKindLabel: "Linear",
+                            workspacePath: "/Preview/NaraIOS",
+                            workflowStatusLabel: "Valid",
+                            workflowStatusIsHealthy: true,
+                            failureMessage: nil,
+                            folderActionLabel: "Change Folder",
+                            isHealthy: true
+                        ),
+                        .init(
+                            id: "/Preview/NaraServer",
+                            scopeName: "Nara Server",
+                            scopeKind: "team",
+                            scopeKindLabel: "Team",
+                            scopeIdentifier: "nara-server",
+                            trackerKind: "linear",
+                            trackerKindLabel: "Linear",
+                            workspacePath: "/Preview/NaraServer",
+                            workflowStatusLabel: "Missing",
+                            workflowStatusIsHealthy: false,
+                            failureMessage: "Workflow configuration missing.",
+                            folderActionLabel: "Change Folder",
+                            isHealthy: false
+                        )
+                    ]
                 )
             )
     }
@@ -670,6 +716,7 @@ public enum SymphonyPreviewDI {
                     kind: "linear",
                     endpoint: "https://api.linear.app/graphql",
                     projectSlug: nil,
+                    teamID: "preview-team",
                     activeStateTypes: ["started"],
                     terminalStateTypes: ["completed", "canceled"]
                 ),

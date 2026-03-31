@@ -140,6 +140,7 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
                 kind: "linear",
                 endpoint: nil,
                 projectSlug: "project-slug",
+                teamID: nil,
                 activeStateTypes: ["backlog", "unstarted", "started"],
                 terminalStateTypes: ["completed", "canceled"]
             )
@@ -152,6 +153,98 @@ struct SymphonyLinearIssueTrackerCandidateFetchTests {
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer linear-token")
         #expect(request.timeoutInterval == 30)
         #expect(requestBody.query.contains("first: 50"))
+    }
+
+    @Test
+    func fetchCandidateIssuesAcceptsFractionalSecondTimestamps() async throws {
+        let executor = LinearRequestExecutorSpy(results: [
+            .success(SymphonyLinearIssueTrackerGatewayTestSupport.httpResponse(statusCode: 200, body: """
+            {
+              "data": {
+                "issues": {
+                  "nodes": [
+                    {
+                      "id": "issue-1",
+                      "identifier": "ABC-1",
+                      "title": "First",
+                      "description": "First issue",
+                      "priority": 2,
+                      "branchName": "feature/abc-1",
+                      "url": "https://linear.app/ABC-1",
+                      "createdAt": "2024-03-20T10:00:00.123Z",
+                      "updatedAt": "2024-03-21T10:00:00.456Z",
+                      "state": { "name": "Todo", "type": "unstarted" },
+                      "labels": { "nodes": [{ "name": "Bug" }] },
+                      "inverseRelations": { "nodes": [] }
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              }
+            }
+            """))
+        ])
+        let gateway = SymphonyLinearIssueTrackerGatewayTestSupport.makeGateway(
+            executor: { request in
+                try await executor.execute(request)
+            }
+        )
+
+        let issues = try await gateway.fetchCandidateIssues(
+            using: SymphonyLinearIssueTrackerGatewayTestSupport.trackerConfiguration()
+        )
+
+        #expect(issues.count == 1)
+        #expect(issues[0].createdAt == SymphonyLinearIssueTrackerGatewayTestSupport.date("2024-03-20T10:00:00.123Z"))
+        #expect(issues[0].updatedAt == SymphonyLinearIssueTrackerGatewayTestSupport.date("2024-03-21T10:00:00.456Z"))
+    }
+
+    @Test
+    func fetchCandidateIssuesUsesTeamFilterWhenTrackerTargetsATeam() async throws {
+        let executor = LinearRequestExecutorSpy(results: [
+            .success(SymphonyLinearIssueTrackerGatewayTestSupport.httpResponse(statusCode: 200, body: """
+            {
+              "data": {
+                "issues": {
+                  "nodes": [],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              }
+            }
+            """))
+        ])
+        let gateway = SymphonyLinearIssueTrackerGatewayTestSupport.makeGateway(
+            executor: { request in
+                try await executor.execute(request)
+            }
+        )
+
+        _ = try await gateway.fetchCandidateIssues(
+            using: SymphonyServiceConfigContract.Tracker(
+                kind: "linear",
+                endpoint: nil,
+                projectSlug: nil,
+                teamID: "team-ios",
+                activeStateTypes: ["started"],
+                terminalStateTypes: ["completed", "canceled"]
+            )
+        )
+
+        let request = try #require(await executor.requests().first)
+        let requestBody = try SymphonyLinearIssueTrackerGatewayTestSupport.requestBody(request)
+
+        #expect(requestBody.query.contains("issues("))
+        #expect(requestBody.query.contains("query FetchCandidateIssues($teamId: ID!"))
+        #expect(requestBody.query.contains("team: { id: { eq: $teamId } }"))
+        #expect(!requestBody.query.contains("teamId: $teamId"))
+        #expect(requestBody.variables["teamId"] as? String == "team-ios")
+        #expect(requestBody.variables["projectSlug"] == nil)
     }
 
     @Test

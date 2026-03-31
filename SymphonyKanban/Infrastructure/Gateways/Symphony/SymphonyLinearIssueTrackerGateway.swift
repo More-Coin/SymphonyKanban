@@ -196,7 +196,7 @@ public struct SymphonyLinearIssueTrackerGateway:
 
         let normalizedTracker = try configurationModel.fromContract(
             from: trackerConfiguration,
-            requireProjectSlug: false
+            requireScope: false
         )
         let authorizationHeader = try await authorizationProvider.authorizationHeader()
         let requestDefinition = requestDefinitionModel.makeIssueStatesByIDsRequestDefinition(
@@ -225,7 +225,7 @@ public struct SymphonyLinearIssueTrackerGateway:
     ) async throws -> [SymphonyTrackerScopeOptionContract] {
         let normalizedTracker = try configurationModel.fromContract(
             from: trackerConfiguration,
-            requireProjectSlug: false
+            requireScope: false
         )
         let authorizationHeader = try await authorizationProvider.authorizationHeader()
         let requestDefinition = requestDefinitionModel.makeTeamsRequestDefinition(
@@ -253,7 +253,7 @@ public struct SymphonyLinearIssueTrackerGateway:
     ) async throws -> [SymphonyTrackerScopeOptionContract] {
         let normalizedTracker = try configurationModel.fromContract(
             from: trackerConfiguration,
-            requireProjectSlug: false
+            requireScope: false
         )
         let authorizationHeader = try await authorizationProvider.authorizationHeader()
         var afterCursor: String?

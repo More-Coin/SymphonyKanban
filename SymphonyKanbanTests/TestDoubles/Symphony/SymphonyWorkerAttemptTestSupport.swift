@@ -46,6 +46,7 @@ enum SymphonyWorkerAttemptTestSupport {
                         kind: "linear",
                         endpoint: "https://linear.example",
                         projectSlug: "proj",
+                        teamID: nil,
                         activeStateTypes: ["backlog", "unstarted", "started"],
                         terminalStateTypes: ["completed", "canceled"]
                     ),

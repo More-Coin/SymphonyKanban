@@ -237,7 +237,8 @@ public struct SymphonySetupConfirmationStepView: View {
             workspacePath: "/Users/dev/NaraIOS",
             explicitWorkflowPath: nil,
             resolvedWorkflowPath: "/Users/dev/NaraIOS/WORKFLOW.md",
-            workspaceName: "NaraIOS"
+            workspaceName: "NaraIOS",
+            workflowProvisioningStatus: .created
         ),
         onComplete: {}
     )
@@ -261,7 +262,8 @@ public struct SymphonySetupConfirmationStepView: View {
             workspacePath: "/Users/dev/Platform",
             explicitWorkflowPath: nil,
             resolvedWorkflowPath: "/Users/dev/Platform/WORKFLOW.md",
-            workspaceName: "Platform"
+            workspaceName: "Platform",
+            workflowProvisioningStatus: .existing
         ),
         isSaving: true,
         onComplete: {}

@@ -23,6 +23,7 @@ public struct SymphonyIssueCatalogTrackerConfigurationPortAdapter: SymphonyIssue
                 kind: "linear",
                 endpoint: nil,
                 projectSlug: nil,
+                teamID: nil,
                 activeStateTypes: [],
                 terminalStateTypes: []
             )

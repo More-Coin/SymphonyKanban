@@ -125,6 +125,7 @@ struct SymphonyWorkflowResolverPortAdapterTests {
         #expect(result.serviceConfig.tracker.kind == "linear")
         #expect(result.serviceConfig.tracker.endpoint == "https://api.linear.app/graphql")
         #expect(result.serviceConfig.tracker.projectSlug == nil)
+        #expect(result.serviceConfig.tracker.teamID == nil)
         #expect(result.serviceConfig.tracker.activeStateTypes == ["backlog", "unstarted", "started"])
         #expect(result.serviceConfig.tracker.terminalStateTypes == ["completed", "canceled"])
         #expect(result.serviceConfig.polling.intervalMs == 30000)
@@ -170,6 +171,33 @@ struct SymphonyWorkflowResolverPortAdapterTests {
 
         #expect(result.serviceConfig.tracker.kind == "jira")
         #expect(result.serviceConfig.tracker.endpoint == nil)
+        #expect(result.serviceConfig.tracker.teamID == nil)
+    }
+
+    @Test
+    func resolverMapsTeamIDFromWorkflowFrontMatter() throws {
+        let fileURL = try SymphonyWorkflowConfigurationTestSupport.makeWorkflowFile(
+            named: "TeamScopeConfig.md",
+            contents: """
+            ---
+            tracker:
+              kind: linear
+              team_id: team-ios
+            ---
+            Prompt body.
+            """
+        )
+
+        let useCase = SymphonyWorkflowConfigurationTestSupport.makeUseCase()
+        let result = try useCase.resolve(
+            SymphonyWorkspaceLocatorContract(
+                currentWorkingDirectoryPath: SymphonyWorkflowConfigurationTestSupport.temporaryDirectory().path,
+                explicitWorkflowPath: fileURL.path
+            )
+        )
+
+        #expect(result.serviceConfig.tracker.projectSlug == nil)
+        #expect(result.serviceConfig.tracker.teamID == "team-ios")
     }
 
     @Test
@@ -245,6 +273,7 @@ struct SymphonyWorkflowResolverPortAdapterTests {
         #expect(result.serviceConfig.tracker.kind == "linear")
         #expect(result.serviceConfig.tracker.endpoint == "https://example.invalid/graphql")
         #expect(result.serviceConfig.tracker.projectSlug == "symphony")
+        #expect(result.serviceConfig.tracker.teamID == nil)
         #expect(result.serviceConfig.tracker.activeStateTypes == ["backlog", "started"])
         #expect(result.serviceConfig.tracker.terminalStateTypes == ["completed", "canceled"])
         #expect(result.serviceConfig.polling.intervalMs == 45000)

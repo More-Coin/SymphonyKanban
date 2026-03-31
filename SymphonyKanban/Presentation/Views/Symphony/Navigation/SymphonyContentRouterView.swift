@@ -14,6 +14,7 @@ public struct SymphonyContentRouterView: View {
     let onCardSelected: (String) -> Void
     let onRefreshTapped: () -> Void
     let onDismissInspector: () -> Void
+    let onBannerTapped: () -> Void
 
     @State private var searchText = ""
     @State private var isDegradedBannerDismissed = false
@@ -28,7 +29,8 @@ public struct SymphonyContentRouterView: View {
         activeBindingCount: Int = 0,
         onCardSelected: @escaping (String) -> Void,
         onRefreshTapped: @escaping () -> Void,
-        onDismissInspector: @escaping () -> Void = {}
+        onDismissInspector: @escaping () -> Void = {},
+        onBannerTapped: @escaping () -> Void = {}
     ) {
         self.selectedTab = selectedTab
         self.boardViewModel = boardViewModel
@@ -40,6 +42,7 @@ public struct SymphonyContentRouterView: View {
         self.onCardSelected = onCardSelected
         self.onRefreshTapped = onRefreshTapped
         self.onDismissInspector = onDismissInspector
+        self.onBannerTapped = onBannerTapped
     }
 
     public var body: some View {
@@ -60,7 +63,8 @@ public struct SymphonyContentRouterView: View {
                             withAnimation(SymphonyDesignStyle.Motion.snappy) {
                                 isDegradedBannerDismissed = true
                             }
-                        }
+                        },
+                        onTap: onBannerTapped
                     )
                 }
 

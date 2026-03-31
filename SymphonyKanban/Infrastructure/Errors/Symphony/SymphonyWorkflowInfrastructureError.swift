@@ -4,6 +4,8 @@ public enum SymphonyWorkflowInfrastructureError: StructuredErrorProtocol, Locali
     case missingWorkflowFile(path: String)
     case workflowParseError(details: String)
     case workflowFrontMatterNotAMap
+    case workflowFileAlreadyExists(path: String)
+    case workflowWriteFailed(path: String, details: String)
 
     public var code: String {
         switch self {
@@ -13,6 +15,10 @@ public enum SymphonyWorkflowInfrastructureError: StructuredErrorProtocol, Locali
             return "symphony.workflow.workflow_parse_error"
         case .workflowFrontMatterNotAMap:
             return "symphony.workflow.workflow_front_matter_not_a_map"
+        case .workflowFileAlreadyExists:
+            return "symphony.workflow.workflow_file_already_exists"
+        case .workflowWriteFailed:
+            return "symphony.workflow.workflow_write_failed"
         }
     }
 
@@ -24,6 +30,10 @@ public enum SymphonyWorkflowInfrastructureError: StructuredErrorProtocol, Locali
             return "The workflow file front matter could not be parsed."
         case .workflowFrontMatterNotAMap:
             return "The workflow front matter must decode to a root map."
+        case .workflowFileAlreadyExists:
+            return "The workflow file already exists."
+        case .workflowWriteFailed:
+            return "The workflow file could not be created."
         }
     }
 
@@ -39,6 +49,10 @@ public enum SymphonyWorkflowInfrastructureError: StructuredErrorProtocol, Locali
             return details
         case .workflowFrontMatterNotAMap:
             return nil
+        case .workflowFileAlreadyExists(let path):
+            return "Path: \(path)"
+        case .workflowWriteFailed(let path, let details):
+            return "Path: \(path). \(details)"
         }
     }
 

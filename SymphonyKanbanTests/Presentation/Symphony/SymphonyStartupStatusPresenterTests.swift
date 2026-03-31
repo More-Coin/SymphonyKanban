@@ -91,14 +91,14 @@ struct SymphonyStartupStatusPresenterTests {
         )
 
         let viewModel = presenter.presentError(
-            SymphonyStartupApplicationError.missingTrackerProjectIdentifier,
+            SymphonyStartupApplicationError.missingTrackerScopeIdentifier,
             workspaceLocator: workspaceLocator
         )
 
         #expect(viewModel.state == .failed)
         #expect(viewModel.title == "Startup Failed")
         #expect(
-            viewModel.message == "The workflow configuration is missing the tracker project identifier. Set the tracker project identifier in the workflow configuration."
+            viewModel.message == "The workflow configuration is missing the tracker scope identifier. Set exactly one tracker scope identifier in the workflow configuration."
         )
         #expect(viewModel.currentWorkingDirectoryPath == "/tmp/nara-ios")
         #expect(viewModel.explicitWorkflowPath == "/tmp/nara-ios/WORKFLOW.md")

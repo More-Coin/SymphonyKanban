@@ -18,10 +18,19 @@ public struct ValidateSymphonyStartupConfigurationPortAdapter:
             throw SymphonyStartupApplicationError.unsupportedTrackerKind(actualKind: trackerKind)
         }
 
-        guard let projectSlug = configuration.tracker.projectSlug?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !projectSlug.isEmpty else {
-            throw SymphonyStartupApplicationError.missingTrackerProjectIdentifier
+        let projectSlug = configuration.tracker.projectSlug?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let teamID = configuration.tracker.teamID?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasProjectSlug = projectSlug?.isEmpty == false
+        let hasTeamID = teamID?.isEmpty == false
+
+        guard hasProjectSlug || hasTeamID else {
+            throw SymphonyStartupApplicationError.missingTrackerScopeIdentifier
+        }
+
+        guard !(hasProjectSlug && hasTeamID) else {
+            throw SymphonyStartupApplicationError.ambiguousTrackerScopeIdentifier
         }
 
         guard !configuration.codex.command

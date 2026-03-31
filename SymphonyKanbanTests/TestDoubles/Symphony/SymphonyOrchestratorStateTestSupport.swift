@@ -37,6 +37,7 @@ enum SymphonyOrchestratorStateTestSupport {
                 kind: "linear",
                 endpoint: "https://api.linear.app/graphql",
                 projectSlug: "proj",
+                teamID: nil,
                 activeStateTypes: ["backlog", "unstarted", "started"],
                 terminalStateTypes: terminalStateTypes
             ),

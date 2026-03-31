@@ -15,11 +15,19 @@ public struct SymphonyWorkspaceSelectionPresenter {
         _ result: SymphonyWorkspaceSelectionResultContract
     ) -> SymphonyWorkspaceSelectionViewModel {
         let selection = makeSelection(from: result)
+        let message: String
+
+        switch result.workflowProvisioningStatus {
+        case .created:
+            message = "Symphony created a new WORKFLOW.md file and validated this workspace folder."
+        case .existing:
+            message = "Symphony validated the existing workflow file for this workspace folder."
+        }
 
         return SymphonyWorkspaceSelectionViewModel(
             state: .selected,
             title: "Select Workspace",
-            message: "This workspace folder is ready to be saved with the selected tracker scope.",
+            message: message,
             selection: selection
         )
     }
@@ -49,7 +57,8 @@ public struct SymphonyWorkspaceSelectionPresenter {
             workspacePath: workspacePath,
             explicitWorkflowPath: result.workspaceLocator.explicitWorkflowPath,
             resolvedWorkflowPath: result.resolvedWorkflowPath,
-            workspaceName: workspaceName
+            workspaceName: workspaceName,
+            workflowProvisioningStatus: result.workflowProvisioningStatus
         )
     }
 

@@ -11,6 +11,10 @@ public struct SymphonyNavigationRoutes: View {
     private let issueCatalogController: SymphonyIssueCatalogController
     private let authController: SymphonyAuthController
     private let codexConnectionController: SymphonyCodexConnectionController
+    private let bindingManagementController: SymphonyWorkspaceBindingManagementController
+    private let workspaceSelectionController: SymphonyWorkspaceSelectionController
+    private let workspaceBindingSetupController: SymphonyWorkspaceBindingSetupController
+    private let chooseWorkspaceDirectory: @MainActor (String?) -> String?
     private let launchTrackerAuthorizationURL: @MainActor (URL) throws -> Void
     private let prepareTrackerAuthorizationCallbackListener: @MainActor () async throws -> Void
     private let awaitTrackerAuthorizationCallback: @MainActor () async throws -> SymphonyTrackerAuthCallbackContract
@@ -22,7 +26,9 @@ public struct SymphonyNavigationRoutes: View {
     @State private var selectedIssueIdentifier: String?
     @State private var showInspector = false
     @State private var showAuthSheet = false
+    @State private var showBindingsSheet = false
     @State private var showCodexStatusAlert = false
+    @State private var bindingsViewModel: SymphonyWorkspaceBindingManagementViewModel?
     @State private var isRefreshing = false
     @State private var authViewModel = SymphonyAuthView.mockViewModel
     @State private var isCodexConnected = false
@@ -39,6 +45,10 @@ public struct SymphonyNavigationRoutes: View {
         issueCatalogController: SymphonyIssueCatalogController,
         authController: SymphonyAuthController,
         codexConnectionController: SymphonyCodexConnectionController,
+        bindingManagementController: SymphonyWorkspaceBindingManagementController,
+        workspaceSelectionController: SymphonyWorkspaceSelectionController,
+        workspaceBindingSetupController: SymphonyWorkspaceBindingSetupController,
+        chooseWorkspaceDirectory: @escaping @MainActor (String?) -> String? = { _ in nil },
         launchTrackerAuthorizationURL: @escaping @MainActor (URL) throws -> Void = { _ in },
         prepareTrackerAuthorizationCallbackListener: @escaping @MainActor () async throws -> Void = {},
         awaitTrackerAuthorizationCallback: @escaping @MainActor () async throws -> SymphonyTrackerAuthCallbackContract = {
@@ -55,6 +65,10 @@ public struct SymphonyNavigationRoutes: View {
         self.issueCatalogController = issueCatalogController
         self.authController = authController
         self.codexConnectionController = codexConnectionController
+        self.bindingManagementController = bindingManagementController
+        self.workspaceSelectionController = workspaceSelectionController
+        self.workspaceBindingSetupController = workspaceBindingSetupController
+        self.chooseWorkspaceDirectory = chooseWorkspaceDirectory
         self.launchTrackerAuthorizationURL = launchTrackerAuthorizationURL
         self.prepareTrackerAuthorizationCallbackListener = prepareTrackerAuthorizationCallbackListener
         self.awaitTrackerAuthorizationCallback = awaitTrackerAuthorizationCallback
@@ -70,7 +84,8 @@ public struct SymphonyNavigationRoutes: View {
                 selectedTab: $selectedTab,
                 isLinearConnected: authViewModel.linearService?.isConnected == true,
                 isCodexConnected: isCodexConnected,
-                onIntegrationTapped: handleIntegrationTapped
+                onIntegrationTapped: handleIntegrationTapped,
+                onSettingsTapped: handleSettingsTapped
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: SymphonyDesignStyle.Sidebar.width, max: 260)
         } detail: {
@@ -84,7 +99,8 @@ public struct SymphonyNavigationRoutes: View {
                 activeBindingCount: activeBindingCount,
                 onCardSelected: handleIssueSelected,
                 onRefreshTapped: handleRefresh,
-                onDismissInspector: handleDismissInspector
+                onDismissInspector: handleDismissInspector,
+                onBannerTapped: handleSettingsTapped
             )
         }
         .background(SymphonyDesignStyle.Background.primary.ignoresSafeArea())
@@ -129,9 +145,73 @@ public struct SymphonyNavigationRoutes: View {
         } message: {
             Text(codexConnectionViewModel.message)
         }
+        .sheet(isPresented: $showBindingsSheet) {
+            SymphonyWorkspaceBindingManagementView(
+                viewModel: bindingsViewModel ?? bindingManagementController.queryViewModel(),
+                onChooseFolder: handleChooseFolder,
+                onRemoveBinding: handleRemoveBinding,
+                onDismiss: { showBindingsSheet = false }
+            )
+            .frame(minWidth: 560, minHeight: 520)
+        }
     }
 
     // MARK: - Route Actions
+
+    private func handleSettingsTapped() {
+        bindingsViewModel = bindingManagementController.queryViewModel()
+        showBindingsSheet = true
+    }
+
+    private func handleChooseFolder(
+        _ card: SymphonyWorkspaceBindingManagementViewModel.Card
+    ) {
+        guard let chosenPath = chooseWorkspaceDirectory(card.workspacePath) else {
+            return
+        }
+
+        let validationResult = workspaceSelectionController.selectWorkspace(
+            workspacePath: chosenPath,
+            scopeKind: card.scopeKind,
+            scopeIdentifier: card.scopeIdentifier,
+            scopeName: card.scopeName
+        )
+
+        guard validationResult.state == .selected,
+              let selection = validationResult.selection else {
+            let bannerMessage = validationResult.errorMessage
+                ?? "Symphony could not validate the selected workspace folder."
+
+            withAnimation(SymphonyDesignStyle.Motion.smooth) {
+                bindingsViewModel = bindingManagementController.queryViewModel(
+                    bannerMessage: bannerMessage
+                )
+            }
+            return
+        }
+
+        withAnimation(SymphonyDesignStyle.Motion.smooth) {
+            bindingsViewModel = bindingManagementController.updateBindingWorkspace(
+                existingWorkspacePath: card.workspacePath,
+                newWorkspacePath: selection.workspacePath,
+                explicitWorkflowPath: selection.explicitWorkflowPath,
+                trackerKind: card.trackerKind,
+                scopeKind: card.scopeKind,
+                scopeIdentifier: card.scopeIdentifier,
+                scopeName: card.scopeName
+            )
+        }
+    }
+
+    private func handleRemoveBinding(
+        _ card: SymphonyWorkspaceBindingManagementViewModel.Card
+    ) {
+        withAnimation(SymphonyDesignStyle.Motion.smooth) {
+            bindingsViewModel = bindingManagementController.removeBinding(
+                forWorkspacePath: card.workspacePath
+            )
+        }
+    }
 
     private func handleIssueSelected(_ issueIdentifier: String) {
         withAnimation(SymphonyDesignStyle.Motion.snappy) {

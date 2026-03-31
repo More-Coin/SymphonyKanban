@@ -80,6 +80,7 @@ private func makeActiveBindingContext() -> SymphonyActiveWorkspaceBindingContext
                 kind: "linear",
                 endpoint: nil,
                 projectSlug: "project-slug",
+                teamID: nil,
                 activeStateTypes: ["backlog", "started"],
                 terminalStateTypes: ["completed", "canceled"]
             ),

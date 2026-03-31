@@ -11,19 +11,22 @@ public struct SymphonyWorkspaceSelectionViewModel: Equatable {
         public let explicitWorkflowPath: String?
         public let resolvedWorkflowPath: String
         public let workspaceName: String
+        public let workflowProvisioningStatus: SymphonyWorkspaceSelectionResultContract.WorkflowProvisioningStatus
 
         public init(
             id: String,
             workspacePath: String,
             explicitWorkflowPath: String?,
             resolvedWorkflowPath: String,
-            workspaceName: String
+            workspaceName: String,
+            workflowProvisioningStatus: SymphonyWorkspaceSelectionResultContract.WorkflowProvisioningStatus
         ) {
             self.id = id
             self.workspacePath = workspacePath
             self.explicitWorkflowPath = explicitWorkflowPath
             self.resolvedWorkflowPath = resolvedWorkflowPath
             self.workspaceName = workspaceName
+            self.workflowProvisioningStatus = workflowProvisioningStatus
         }
     }
 

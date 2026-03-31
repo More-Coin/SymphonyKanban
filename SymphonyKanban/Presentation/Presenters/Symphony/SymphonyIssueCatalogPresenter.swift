@@ -1,18 +1,23 @@
 import Foundation
 
 public struct SymphonyIssueCatalogPresenter {
-    public init() {}
+    private let boardOrderingPolicy: any SymphonyIssueDispatchOrderingPolicyProtocol
+
+    public init(
+        boardOrderingPolicy: any SymphonyIssueDispatchOrderingPolicyProtocol = SymphonyIssueDispatchOrderingPolicy()
+    ) {
+        self.boardOrderingPolicy = boardOrderingPolicy
+    }
 
     public func present(
         _ collection: SymphonyIssueCollectionContract,
         displayMode: SymphonyIssueCatalogDisplayModeContract,
         selectedIssueIdentifier: String?
     ) -> SymphonyIssueCatalogViewModel {
-        let sortedIssues = collection.issues.sorted(by: issueOrdering)
         return SymphonyIssueCatalogViewModel(
             displayMode: displayMode,
             issuesByIdentifier: Dictionary(
-                uniqueKeysWithValues: sortedIssues.map { ($0.identifier, $0) }
+                uniqueKeysWithValues: collection.issues.map { ($0.identifier, $0) }
             ),
             boardViewModel: makeBoardViewModel(
                 from: collection,
@@ -46,7 +51,7 @@ public struct SymphonyIssueCatalogPresenter {
                     subtitle: bindingSubtitle(for: bindingResult),
                     errorMessage: bindingResult.loadError.map(errorMessage(for:)),
                     columns: makeColumns(
-                        from: bindingResult.issues.sorted(by: issueOrdering),
+                        from: boardOrderedIssues(bindingResult.issues),
                         scopeName: bindingResult.bindingContext.workspaceBinding.scopeName
                     )
                 )
@@ -60,13 +65,16 @@ public struct SymphonyIssueCatalogPresenter {
         if collection.bindingResults.isEmpty {
             return SymphonyKanbanBoardViewModel(
                 columns: makeColumns(
-                    from: collection.issues.sorted(by: issueOrdering),
+                    from: boardOrderedIssues(collection.issues),
                     scopeName: nil
                 )
             )
         }
 
-        let entries = mergedIssueEntries(from: collection)
+        let entries = mergedIssueEntries(
+            from: collection,
+            issueSorter: boardOrderedIssues(_:)
+        )
         let grouped = Dictionary(grouping: entries, by: { statusKey(for: $0.issue) })
 
         return SymphonyKanbanBoardViewModel(
@@ -166,7 +174,7 @@ public struct SymphonyIssueCatalogPresenter {
                     subtitle: bindingSubtitle(for: bindingResult),
                     errorMessage: bindingResult.loadError.map(errorMessage(for:)),
                     rows: makeRows(
-                        from: bindingResult.issues.sorted(by: issueOrdering),
+                        from: listOrderedIssues(bindingResult.issues),
                         scopeName: bindingResult.bindingContext.workspaceBinding.scopeName,
                         selectedIssueIdentifier: selectedIssueIdentifier
                     )
@@ -182,7 +190,7 @@ public struct SymphonyIssueCatalogPresenter {
         if collection.bindingResults.isEmpty {
             return SymphonyIssueListViewModel(
                 rows: makeRows(
-                    from: collection.issues.sorted(by: issueOrdering),
+                    from: listOrderedIssues(collection.issues),
                     scopeName: nil,
                     selectedIssueIdentifier: selectedIssueIdentifier
                 )
@@ -190,7 +198,10 @@ public struct SymphonyIssueCatalogPresenter {
         }
 
         return SymphonyIssueListViewModel(
-            rows: mergedIssueEntries(from: collection).map { entry in
+            rows: mergedIssueEntries(
+                from: collection,
+                issueSorter: listOrderedIssues(_:)
+            ).map { entry in
                 let key = statusKey(for: entry.issue)
                 return SymphonyIssueListRowViewModel(
                     id: entry.issue.id,
@@ -260,18 +271,61 @@ public struct SymphonyIssueCatalogPresenter {
     }
 
     private func mergedIssueEntries(
-        from collection: SymphonyIssueCollectionContract
+        from collection: SymphonyIssueCollectionContract,
+        issueSorter: ([SymphonyIssue]) -> [SymphonyIssue]
     ) -> [(issue: SymphonyIssue, scopeName: String?)] {
-        collection.bindingResults
-            .flatMap { bindingResult in
-                bindingResult.issues.map { issue in
-                    (
-                        issue: issue,
-                        scopeName: bindingResult.bindingContext.workspaceBinding.scopeName
-                    )
-                }
+        let entries = collection.bindingResults.flatMap { bindingResult in
+            bindingResult.issues.map { issue in
+                (
+                    issue: issue,
+                    scopeName: bindingResult.bindingContext.workspaceBinding.scopeName
+                )
             }
-            .sorted { issueOrdering($0.issue, $1.issue) }
+        }
+        let issuesByID = Dictionary(uniqueKeysWithValues: entries.map { ($0.issue.id, $0.issue) })
+        let scopeNameByIssueID = Dictionary(uniqueKeysWithValues: entries.map { ($0.issue.id, $0.scopeName) })
+
+        return issueSorter(entries.map(\.issue)).compactMap { issue in
+            guard let originalIssue = issuesByID[issue.id] else {
+                return nil
+            }
+
+            return (issue: originalIssue, scopeName: scopeNameByIssueID[issue.id] ?? nil)
+        }
+    }
+
+    private func boardOrderedIssues(_ issues: [SymphonyIssue]) -> [SymphonyIssue] {
+        let originalIssuesByID = Dictionary(uniqueKeysWithValues: issues.map { ($0.id, $0) })
+
+        return boardOrderingPolicy
+            .ordered(issues.map(boardOrderingIssue))
+            .compactMap { originalIssuesByID[$0.id] }
+    }
+
+    private func boardOrderingIssue(_ issue: SymphonyIssue) -> SymphonyIssue {
+        guard issue.priority == 0 else {
+            return issue
+        }
+
+        return SymphonyIssue(
+            id: issue.id,
+            identifier: issue.identifier,
+            title: issue.title,
+            description: issue.description,
+            priority: nil,
+            state: issue.state,
+            stateType: issue.stateType,
+            branchName: issue.branchName,
+            url: issue.url,
+            labels: issue.labels,
+            blockedBy: issue.blockedBy,
+            createdAt: issue.createdAt,
+            updatedAt: issue.updatedAt
+        )
+    }
+
+    private func listOrderedIssues(_ issues: [SymphonyIssue]) -> [SymphonyIssue] {
+        issues.sorted(by: issueOrdering)
     }
 
     private func issueOrdering(

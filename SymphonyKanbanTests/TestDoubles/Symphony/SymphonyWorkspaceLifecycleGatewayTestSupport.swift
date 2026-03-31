@@ -32,6 +32,7 @@ struct WorkspaceLifecycleTestEnvironment {
                 kind: "linear",
                 endpoint: "https://api.linear.app/graphql",
                 projectSlug: "project-slug",
+                teamID: nil,
                 activeStateTypes: ["backlog", "unstarted", "started"],
                 terminalStateTypes: ["completed", "canceled"]
             ),

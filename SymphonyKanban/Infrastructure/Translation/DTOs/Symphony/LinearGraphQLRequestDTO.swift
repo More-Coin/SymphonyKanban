@@ -11,6 +11,24 @@ enum LinearGraphQLVariableDTO: Sendable {
     case null
 }
 
+struct LinearIssueScopeQueryParts {
+    let operationVariableDeclaration: String
+    let issueArgumentsClause: String
+    let filterClause: String
+    let scopeVariable: (name: String, value: LinearGraphQLVariableDTO)
+
+    func variables(
+        afterCursor: String?,
+        stateTypes: [String]
+    ) -> [String: LinearGraphQLVariableDTO] {
+        [
+            scopeVariable.name: scopeVariable.value,
+            "stateTypes": .stringArray(stateTypes),
+            "after": afterCursor.map { .string($0) } ?? .null
+        ]
+    }
+}
+
 struct LinearGraphQLTransportRequestBuilder {
     func makeRequest(
         _ requestDefinition: LinearIssueTrackerRequestDefinition,

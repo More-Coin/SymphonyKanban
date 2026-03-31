@@ -5,6 +5,7 @@ public struct SymphonyServiceConfigContract: Equatable, Sendable {
         public let kind: String?
         public let endpoint: String?
         public let projectSlug: String?
+        public let teamID: String?
         public let activeStateTypes: [String]
         public let terminalStateTypes: [String]
 

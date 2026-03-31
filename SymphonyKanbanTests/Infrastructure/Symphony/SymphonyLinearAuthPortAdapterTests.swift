@@ -165,6 +165,7 @@ struct SymphonyLinearAuthPortAdapterTests {
             kind: "linear",
             endpoint: nil,
             projectSlug: "project-slug",
+            teamID: nil,
             activeStateTypes: ["backlog", "unstarted", "started"],
             terminalStateTypes: ["completed", "canceled"]
         )

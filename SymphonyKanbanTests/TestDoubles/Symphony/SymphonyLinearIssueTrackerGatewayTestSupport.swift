@@ -7,6 +7,7 @@ enum SymphonyLinearIssueTrackerGatewayTestSupport {
             kind: "linear",
             endpoint: "https://api.linear.app/graphql",
             projectSlug: "project-slug",
+            teamID: nil,
             activeStateTypes: ["backlog", "unstarted", "started"],
             terminalStateTypes: ["completed", "canceled"]
         )
@@ -51,8 +52,14 @@ enum SymphonyLinearIssueTrackerGatewayTestSupport {
     }
 
     static func date(_ value: String) -> Date {
-        let formatter = ISO8601DateFormatter()
-        return formatter.date(from: value)!
+        let fractionalSecondFormatter = ISO8601DateFormatter()
+        fractionalSecondFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let internetDateTimeFormatter = ISO8601DateFormatter()
+        internetDateTimeFormatter.formatOptions = [.withInternetDateTime]
+
+        return fractionalSecondFormatter.date(from: value)
+            ?? internetDateTimeFormatter.date(from: value)!
     }
 
     static func makeGateway(

@@ -10,6 +10,7 @@ public struct SymphonySetupWorkspaceSelectionStepView: View {
 
     private let workspaceSelectionController: SymphonyWorkspaceSelectionController
     private let chooseWorkspaceDirectory: @MainActor (String?) -> String?
+    private let selectedScope: SymphonySetupScopeSelectionViewModel.Option?
     @Binding private var selectedWorkspace: SymphonyWorkspaceSelectionViewModel.Selection?
     private let onContinue: () -> Void
 
@@ -23,11 +24,13 @@ public struct SymphonySetupWorkspaceSelectionStepView: View {
     public init(
         workspaceSelectionController: SymphonyWorkspaceSelectionController,
         chooseWorkspaceDirectory: @escaping @MainActor (String?) -> String?,
+        selectedScope: SymphonySetupScopeSelectionViewModel.Option?,
         selectedWorkspace: Binding<SymphonyWorkspaceSelectionViewModel.Selection?>,
         onContinue: @escaping () -> Void
     ) {
         self.workspaceSelectionController = workspaceSelectionController
         self.chooseWorkspaceDirectory = chooseWorkspaceDirectory
+        self.selectedScope = selectedScope
         self._selectedWorkspace = selectedWorkspace
         self.onContinue = onContinue
         _viewModel = State(
@@ -151,6 +154,20 @@ public struct SymphonySetupWorkspaceSelectionStepView: View {
                     .foregroundStyle(SymphonyDesignStyle.Text.tertiary)
                     .lineLimit(1)
             }
+
+            HStack(spacing: SymphonyDesignStyle.Spacing.xs) {
+                Image(systemName: selection.workflowProvisioningStatus == .created
+                    ? "sparkles"
+                    : "checkmark.seal")
+                    .font(SymphonyDesignStyle.Typography.micro)
+                    .foregroundStyle(SymphonyDesignStyle.Accent.green)
+
+                Text(selection.workflowProvisioningStatus == .created
+                    ? "Created new WORKFLOW.md"
+                    : "Using existing WORKFLOW.md")
+                    .font(SymphonyDesignStyle.Typography.micro)
+                    .foregroundStyle(SymphonyDesignStyle.Text.secondary)
+            }
         }
         .padding(SymphonyDesignStyle.Spacing.lg)
         .symphonyCard()
@@ -243,10 +260,13 @@ public struct SymphonySetupWorkspaceSelectionStepView: View {
     /// so that navigating back from confirmation shows the correct visual state
     /// instead of resetting to idle.
     private func rehydrateViewModelIfNeeded() {
-        if let selectedWorkspace, viewModel.state == .idle {
+        if let selectedWorkspace,
+           let selectedScope,
+           viewModel.state == .idle {
             viewModel = workspaceSelectionController.selectWorkspace(
                 workspacePath: selectedWorkspace.workspacePath,
-                explicitWorkflowPath: selectedWorkspace.explicitWorkflowPath
+                explicitWorkflowPath: selectedWorkspace.explicitWorkflowPath,
+                selectedScope: selectedScope
             )
         }
     }
@@ -256,8 +276,13 @@ public struct SymphonySetupWorkspaceSelectionStepView: View {
             return
         }
 
+        guard let selectedScope else {
+            return
+        }
+
         let result = workspaceSelectionController.selectWorkspace(
-            workspacePath: chosenPath
+            workspacePath: chosenPath,
+            selectedScope: selectedScope
         )
 
         withAnimation(SymphonyDesignStyle.Motion.smooth) {
@@ -280,6 +305,14 @@ public struct SymphonySetupWorkspaceSelectionStepView: View {
                 )
             ),
         chooseWorkspaceDirectory: { _ in nil },
+        selectedScope: SymphonySetupScopeSelectionViewModel.Option(
+            id: "team:team-ios",
+            scopeKind: "team",
+            scopeKindLabel: "Team",
+            scopeIdentifier: "team-ios",
+            scopeName: "Nara iOS",
+            detailText: nil
+        ),
         selectedWorkspace: .constant(nil),
         onContinue: {}
     )
@@ -291,13 +324,22 @@ public struct SymphonySetupWorkspaceSelectionStepView: View {
     SymphonySetupWorkspaceSelectionStepView(
         workspaceSelectionController: SymphonyPreviewDI.makeWorkspaceSelectionController(),
         chooseWorkspaceDirectory: { _ in nil },
+        selectedScope: SymphonySetupScopeSelectionViewModel.Option(
+            id: "project:nara-server",
+            scopeKind: "project",
+            scopeKindLabel: "Project",
+            scopeIdentifier: "nara-server",
+            scopeName: "Nara Server",
+            detailText: nil
+        ),
         selectedWorkspace: .constant(
             .init(
                 id: "/Preview/NaraIOS",
                 workspacePath: "/Preview/NaraIOS",
                 explicitWorkflowPath: nil,
                 resolvedWorkflowPath: "/Preview/NaraIOS/WORKFLOW.md",
-                workspaceName: "NaraIOS"
+                workspaceName: "NaraIOS",
+                workflowProvisioningStatus: .created
             )
         ),
         onContinue: {}
@@ -318,6 +360,14 @@ public struct SymphonySetupWorkspaceSelectionStepView: View {
                 )
             ),
         chooseWorkspaceDirectory: { _ in nil },
+        selectedScope: SymphonySetupScopeSelectionViewModel.Option(
+            id: "team:team-ios",
+            scopeKind: "team",
+            scopeKindLabel: "Team",
+            scopeIdentifier: "team-ios",
+            scopeName: "Nara iOS",
+            detailText: nil
+        ),
         selectedWorkspace: .constant(nil),
         onContinue: {}
     )
