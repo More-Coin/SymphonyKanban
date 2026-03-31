@@ -92,7 +92,10 @@ public struct TestsRuntimeLayeredLocationPolicy: ArchitecturePolicyProtocol {
             return []
         }
 
-        let expectedPrefix = bucket.canonicalPrefix(testRootName: canonicalTestRootName(for: file))
+        let expectedPrefix = bucket.canonicalPrefix(
+            testRootName: canonicalTestRootName(for: file),
+            namespaceSegment: runtimeNamespaceSegment(for: file)
+        )
         guard !file.repoRelativePath.hasPrefix(expectedPrefix) else {
             return []
         }
@@ -109,7 +112,7 @@ public struct TestsRuntimeLayeredLocationPolicy: ArchitecturePolicyProtocol {
                         "layer-aligned test ownership mismatch"
                     ],
                     signs: [
-                        "the suite imports runtime modules such as SymphonyRuntime or SymphonyCLI",
+                        "the suite imports project runtime or command-surface modules, or its path and member names point at one runtime ownership bucket",
                         "the suite name and member names point at \(bucket.signDescription)",
                         "the repo-relative path does not begin with \(expectedPrefix)."
                     ],
@@ -154,7 +157,7 @@ public struct TestsDiagnosticsLocationPolicy: ArchitecturePolicyProtocol {
                         "the file behaves like diagnostics coverage rather than runtime feature coverage",
                         "the repo-relative path does not begin with \(expectedPrefix)."
                     ],
-                    architecturalNote: "Architecture-linter tests are diagnostics coverage, not runtime feature tests. They should live under a dedicated Diagnostics root so agents can distinguish structural lint coverage from Symphony runtime coverage.",
+                    architecturalNote: "Architecture-linter tests are diagnostics coverage, not runtime feature tests. They should live under a dedicated Diagnostics root so agents can distinguish structural lint coverage from project runtime coverage.",
                     destination: "move diagnostics suites under \(expectedPrefix).",
                     decomposition: "split diagnostics coverage by rule family under \(expectedPrefix), keep reusable harness code in a Support subtree under that diagnostics root, and keep runtime suites out of Diagnostics entirely."
                 ),
@@ -271,7 +274,12 @@ public struct TestsMixedResponsibilityRuntimeSuitePolicy: ArchitecturePolicyProt
         let declaration = primaryTestSuite(in: file)
         let renderedFamilies = families.map(\.displayName).joined(separator: ", ")
         let testRootName = canonicalTestRootName(for: file)
-        let destinations = families.map { $0.canonicalPrefix(testRootName: testRootName) }.joined(separator: ", ")
+        let destinations = families.map {
+            $0.canonicalPrefix(
+                testRootName: testRootName,
+                namespaceSegment: runtimeNamespaceSegment(for: file)
+            )
+        }.joined(separator: ", ")
 
         return [
             file.diagnostic(
@@ -351,11 +359,10 @@ public struct TestsImportOwnershipPolicy: ArchitecturePolicyProtocol {
             return []
         }
 
-        let modules = Set(file.imports.map(\.moduleName))
         var diagnostics: [ArchitectureDiagnostic] = []
 
         if isDiagnosticsTestFile(file),
-           let occurrence = file.imports.first(where: { ["SymphonyRuntime", "SymphonyCLI"].contains($0.moduleName) }) {
+           let occurrence = firstRuntimeOrCommandSurfaceImport(in: file) {
             diagnostics.append(
                 file.diagnostic(
                     ruleID: Self.ruleID,
@@ -393,12 +400,12 @@ public struct TestsImportOwnershipPolicy: ArchitecturePolicyProtocol {
                             "test-module ownership mismatch"
                         ],
                         signs: [
-                            "the file otherwise behaves like Symphony runtime coverage",
+                            "the file otherwise behaves like project runtime coverage",
                             "a KanbanArchitectureLinter or parser module import appears in the runtime suite",
                             "the suite likely belongs in Diagnostics or needs to be split."
                         ],
                         architecturalNote: "Runtime suites should depend on runtime modules only. Diagnostics dependencies inside a runtime suite are a signal that diagnostics coverage has leaked out of the dedicated Diagnostics tree.",
-                        destination: "move diagnostics-focused assertions to \(diagnosticsCanonicalPrefix(for: file)) and keep runtime suites limited to their needed Symphony modules.",
+                        destination: "move diagnostics-focused assertions to \(diagnosticsCanonicalPrefix(for: file)) and keep runtime suites limited to their needed project runtime or command-surface modules.",
                         decomposition: "extract diagnostics-specific assertions into dedicated Diagnostics files, remove parser or linter imports from the runtime suite, and keep only the runtime-target imports the scenario actually exercises."
                     ),
                     coordinate: occurrence.coordinate
@@ -408,27 +415,27 @@ public struct TestsImportOwnershipPolicy: ArchitecturePolicyProtocol {
 
         if isRuntimeTestFile(file),
            !file.repoRelativePath.hasPrefix(appBucketPrefix(for: file)),
-           modules.contains("SymphonyRuntime"),
-           modules.contains("SymphonyCLI"),
-           let occurrence = file.imports.first(where: { $0.moduleName == "SymphonyCLI" }) {
+           hasRuntimeSurfaceImport(in: file),
+           hasCommandSurfaceImport(in: file),
+           let occurrence = firstCommandSurfaceImport(in: file) {
             diagnostics.append(
                 file.diagnostic(
                     ruleID: Self.ruleID,
                     message: testArchitectureMessage(
-                        summary: "Runtime suite '\(file.classification.fileStem)' imports both SymphonyRuntime and SymphonyCLI outside the App test bucket.",
+                        summary: "Runtime suite '\(file.classification.fileStem)' imports both runtime-surface and command-surface modules outside the App test bucket.",
                         categories: [
                             "application plus app-bootstrap responsibilities in one runtime suite",
                             "suite that still mixes runtime wiring with lower-level scenarios",
                             "cross-layer import ownership mismatch"
                         ],
                         signs: [
-                            "SymphonyRuntime and SymphonyCLI are both imported in the same non-App suite",
+                            "runtime-surface and command-surface modules are both imported in the same non-App suite",
                             "the suite likely covers runtime behavior plus bootstrap or command-surface behavior together",
                             "the file cannot stay in one non-App canonical bucket without splitting."
                         ],
-                        architecturalNote: "Non-App runtime suites should generally test one layer-facing surface. Pulling in SymphonyCLI alongside SymphonyRuntime usually means the suite mixes bootstrap or command-surface behavior with lower-level runtime responsibilities.",
+                        architecturalNote: "Non-App runtime suites should generally test one layer-facing surface. Pulling command-surface imports alongside runtime-surface imports usually means the suite mixes bootstrap or command-surface behavior with lower-level runtime responsibilities.",
                         destination: "move bootstrap or command-surface scenarios to \(appBucketPrefix(for: file)) and leave lower-level runtime scenarios in their Application, Infrastructure, Domain, or Presentation bucket.",
-                        decomposition: "separate App-facing CLI or bootstrap scenarios first, move them to the App test bucket, then leave the remaining runtime scenarios with only the lower-level SymphonyRuntime dependency."
+                        decomposition: "separate App-facing command-surface or bootstrap scenarios first, move them to the App test bucket, then leave the remaining runtime scenarios with only the lower-level runtime-surface dependency."
                     ),
                     coordinate: occurrence.coordinate
                 )
@@ -493,8 +500,13 @@ private enum RuntimeTestBucket: String, CaseIterable {
     case presentation = "Presentation"
     case app = "App"
 
-    func canonicalPrefix(testRootName: String) -> String {
-        "\(testRootName)/\(rawValue)/Symphony/"
+    func canonicalPrefix(testRootName: String, namespaceSegment: String?) -> String {
+        let base = "\(testRootName)/\(rawValue)/"
+        guard let namespaceSegment, !namespaceSegment.isEmpty else {
+            return base
+        }
+
+        return "\(base)\(namespaceSegment)/"
     }
 
     var signDescription: String {
@@ -515,15 +527,15 @@ private enum RuntimeTestBucket: String, CaseIterable {
     var decompositionGuidance: String {
         switch self {
         case .application:
-            return "keep one responsibility family per file inside Application/Symphony/, then move shared support to TestDoubles so services, use cases, contracts, and state suites do not stay bundled together."
+            return "keep one responsibility family per file inside Application/, then move shared support to TestDoubles so services, use cases, contracts, and state suites do not stay bundled together."
         case .infrastructure:
             return "separate gateway, port-adapter, workspace, transport, and provider-specific scenarios by file, then move reusable boundary fakes or spies to TestDoubles."
         case .domain:
-            return "keep pure policy or invariant coverage in Domain/Symphony/Policies/, and move any collaborator-driven behavior out toward Application or Infrastructure before migrating the suite."
+            return "keep pure policy or invariant coverage in Domain/Policies/, and move any collaborator-driven behavior out toward Application or Infrastructure before migrating the suite."
         case .presentation:
-            return "split DTO, controller, renderer, presenter, and other presentation seams into their own files under Presentation/Symphony/ so each file points at one presentation owner."
+            return "split DTO, controller, renderer, presenter, and other presentation seams into their own files under Presentation/ so each file points at one presentation owner."
         case .app:
-            return "keep bootstrap or CLI-surface scenarios in App/Symphony/, and split out any lower-level Application, Infrastructure, or Presentation behavior that leaked into the same file."
+            return "keep bootstrap or command-surface scenarios in App/, and split out any lower-level Application, Infrastructure, or Presentation behavior that leaked into the same file."
         }
     }
 
@@ -558,18 +570,33 @@ private enum RuntimeResponsibilityFamily: CaseIterable {
         }
     }
 
-    func canonicalPrefix(testRootName: String) -> String {
+    func canonicalPrefix(testRootName: String, namespaceSegment: String?) -> String {
         switch self {
         case .application:
-            return RuntimeTestBucket.application.canonicalPrefix(testRootName: testRootName)
+            return RuntimeTestBucket.application.canonicalPrefix(
+                testRootName: testRootName,
+                namespaceSegment: namespaceSegment
+            )
         case .infrastructure:
-            return RuntimeTestBucket.infrastructure.canonicalPrefix(testRootName: testRootName)
+            return RuntimeTestBucket.infrastructure.canonicalPrefix(
+                testRootName: testRootName,
+                namespaceSegment: namespaceSegment
+            )
         case .domain:
-            return RuntimeTestBucket.domain.canonicalPrefix(testRootName: testRootName)
+            return RuntimeTestBucket.domain.canonicalPrefix(
+                testRootName: testRootName,
+                namespaceSegment: namespaceSegment
+            )
         case .presentation:
-            return RuntimeTestBucket.presentation.canonicalPrefix(testRootName: testRootName)
+            return RuntimeTestBucket.presentation.canonicalPrefix(
+                testRootName: testRootName,
+                namespaceSegment: namespaceSegment
+            )
         case .app:
-            return RuntimeTestBucket.app.canonicalPrefix(testRootName: testRootName)
+            return RuntimeTestBucket.app.canonicalPrefix(
+                testRootName: testRootName,
+                namespaceSegment: namespaceSegment
+            )
         }
     }
 }
@@ -593,6 +620,22 @@ private func importedModules(in file: ArchitectureFile) -> Set<String> {
     Set(file.imports.map(\.moduleName))
 }
 
+private let diagnosticsModuleNames: Set<String> = [
+    "KanbanArchitectureLinterCLI",
+    "KanbanArchitectureLinterDomain",
+    "SwiftParser",
+    "SwiftSyntax"
+]
+
+private let commandSurfaceModuleTerms: Set<String> = [
+    "cli",
+    "command"
+]
+
+private let runtimeSurfaceModuleTerms: Set<String> = [
+    "runtime"
+]
+
 private func isUITestFile(_ file: ArchitectureFile) -> Bool {
     file.classification.isUITestFile
 }
@@ -603,9 +646,7 @@ private func isDiagnosticsTestFile(_ file: ArchitectureFile) -> Bool {
     }
 
     let modules = importedModules(in: file)
-    return modules.contains("KanbanArchitectureLinterCLI")
-        || modules.contains("SwiftParser")
-        || modules.contains("SwiftSyntax")
+    return modules.contains(where: diagnosticsModuleNames.contains)
         || file.repoRelativePath.contains("/Diagnostics/")
         || file.classification.fileStem.contains("ArchitectureLinter")
 }
@@ -624,11 +665,7 @@ private func isRuntimeTestFile(_ file: ArchitectureFile) -> Bool {
         return false
     }
 
-    let modules = importedModules(in: file)
-    return modules.contains("SymphonyRuntime")
-        || modules.contains("SymphonyCLI")
-        || file.classification.fileStem.hasPrefix("Symphony")
-        || file.classification.fileStem.contains("FetchSymphony")
+    return primaryTestSuite(in: file) != nil
 }
 
 private func isTestDoublesFile(_ file: ArchitectureFile) -> Bool {
@@ -649,7 +686,7 @@ private func legacyDestinationGuidance(for file: ArchitectureFile) -> String {
         return "move runtime suites under \(runtimeBucketDestinationSummary(for: file)) based on the owning responsibility family."
     }
 
-    return "move the suite under \(bucket.canonicalPrefix(testRootName: canonicalTestRootName(for: file)))."
+    return "move the suite under \(bucket.canonicalPrefix(testRootName: canonicalTestRootName(for: file), namespaceSegment: runtimeNamespaceSegment(for: file)))."
 }
 
 private let canonicalTestRootPlaceholder = "<ProjectName>Tests"
@@ -674,23 +711,30 @@ private func diagnosticsSupportPrefix(for file: ArchitectureFile? = nil) -> Stri
 }
 
 private func testDoublesCanonicalPrefix(for file: ArchitectureFile? = nil) -> String {
-    "\(canonicalTestRootName(for: file))/TestDoubles/Symphony/"
+    let base = "\(canonicalTestRootName(for: file))/TestDoubles/"
+    guard let namespaceSegment = runtimeNamespaceSegment(for: file) else {
+        return base
+    }
+
+    return "\(base)\(namespaceSegment)/"
 }
 
 private func appBucketPrefix(for file: ArchitectureFile? = nil) -> String {
-    RuntimeTestBucket.app.canonicalPrefix(testRootName: canonicalTestRootName(for: file))
+    RuntimeTestBucket.app.canonicalPrefix(
+        testRootName: canonicalTestRootName(for: file),
+        namespaceSegment: runtimeNamespaceSegment(for: file)
+    )
 }
 
 private func runtimeBucketDestinationSummary(for file: ArchitectureFile? = nil) -> String {
     let testRootName = canonicalTestRootName(for: file)
-    return "\(testRootName)/Application|Infrastructure|Domain|Presentation|App/Symphony/..."
+    return "\(testRootName)/Application|Infrastructure|Domain|Presentation|App/..."
 }
 
 private func inferredRuntimeBuckets(for file: ArchitectureFile) -> [RuntimeTestBucket] {
     let stem = file.classification.fileStem.lowercased()
     let stemTokens = identifierTokens(from: file.classification.fileStem)
     let path = file.repoRelativePath.lowercased()
-    let modules = importedModules(in: file)
     var buckets = Set<RuntimeTestBucket>()
 
     if stem.contains("gateway")
@@ -726,7 +770,7 @@ private func inferredRuntimeBuckets(for file: ArchitectureFile) -> [RuntimeTestB
         || stem.contains("bootstrap")
         || stemTokens.contains("main")
         || path.contains("/app/")
-        || modules.contains("SymphonyCLI") {
+        || hasCommandSurfaceImport(in: file) {
         buckets.insert(.app)
     }
 
@@ -756,8 +800,6 @@ private func runtimeResponsibilityFamilies(in file: ArchitectureFile) -> [Runtim
     let stemTokens = identifierTokens(from: file.classification.fileStem)
     let methodTokens = testMethodTokens(in: file)
     let path = file.repoRelativePath.lowercased()
-    let modules = importedModules(in: file)
-
     var families = Set<RuntimeResponsibilityFamily>()
 
     if stem.contains("gateway")
@@ -792,7 +834,9 @@ private func runtimeResponsibilityFamilies(in file: ArchitectureFile) -> [Runtim
         families.insert(.presentation)
     }
 
-    if stem.contains("service")
+    if !stem.contains("portadapter")
+        && !methodTokens.contains("portadapter")
+        && (stem.contains("service")
         || stem.contains("usecase")
         || stem.contains("dispatchpreflight")
         || stem.contains("contract")
@@ -806,7 +850,7 @@ private func runtimeResponsibilityFamilies(in file: ArchitectureFile) -> [Runtim
         || methodTokens.contains("configuration")
         || methodTokens.contains("carrier")
         || methodTokens.contains("orchestrator")
-        || path.contains("/application/") {
+        || path.contains("/application/")) {
         families.insert(.application)
     }
 
@@ -815,11 +859,72 @@ private func runtimeResponsibilityFamilies(in file: ArchitectureFile) -> [Runtim
         || stem.contains("bootstrap")
         || stemTokens.contains("main")
         || path.contains("/app/")
-        || modules.contains("SymphonyCLI") {
+        || hasCommandSurfaceImport(in: file) {
         families.insert(.app)
     }
 
     return RuntimeResponsibilityFamily.allCases.filter { families.contains($0) }
+}
+
+private func normalizedModuleName(_ moduleName: String) -> String {
+    identifierTokens(from: moduleName).joined()
+}
+
+private func isCommandSurfaceModuleName(_ moduleName: String) -> Bool {
+    let normalized = normalizedModuleName(moduleName)
+    return commandSurfaceModuleTerms.contains { normalized.contains($0) }
+}
+
+private func isRuntimeSurfaceModuleName(_ moduleName: String) -> Bool {
+    let normalized = normalizedModuleName(moduleName)
+    return runtimeSurfaceModuleTerms.contains { normalized.contains($0) }
+}
+
+private func firstRuntimeOrCommandSurfaceImport(
+    in file: ArchitectureFile
+) -> ArchitectureImportOccurrence? {
+    file.imports.first { occurrence in
+        isRuntimeSurfaceModuleName(occurrence.moduleName)
+            || isCommandSurfaceModuleName(occurrence.moduleName)
+    }
+}
+
+private func firstCommandSurfaceImport(
+    in file: ArchitectureFile
+) -> ArchitectureImportOccurrence? {
+    file.imports.first { occurrence in
+        isCommandSurfaceModuleName(occurrence.moduleName)
+    }
+}
+
+private func hasRuntimeSurfaceImport(in file: ArchitectureFile) -> Bool {
+    file.imports.contains { occurrence in
+        isRuntimeSurfaceModuleName(occurrence.moduleName)
+    }
+}
+
+private func hasCommandSurfaceImport(in file: ArchitectureFile) -> Bool {
+    file.imports.contains { occurrence in
+        isCommandSurfaceModuleName(occurrence.moduleName)
+    }
+}
+
+private func runtimeNamespaceSegment(for file: ArchitectureFile?) -> String? {
+    guard let file,
+          file.classification.pathComponents.count >= 4,
+          let testRoot = file.classification.testRootComponent,
+          testRoot != "Tests" else {
+        return nil
+    }
+
+    let components = file.classification.pathComponents
+    switch components[1] {
+    case "Application", "Infrastructure", "Domain", "Presentation", "App", "TestDoubles":
+        let candidate = components[2]
+        return candidate.hasSuffix(".swift") ? nil : candidate
+    default:
+        return nil
+    }
 }
 
 private func identifierTokens(from value: String) -> Set<String> {
