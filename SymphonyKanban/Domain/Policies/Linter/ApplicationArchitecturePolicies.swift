@@ -83,6 +83,30 @@ public struct ApplicationPortProtocolsShapePolicy: ArchitecturePolicyProtocol {
             )
         }
 
+        diagnostics.append(
+            contentsOf: file.topLevelDeclarations.compactMap { declaration in
+                guard declaration.kind == .protocol,
+                      declaration.name.hasSuffix("PortProtocol"),
+                      let indexedDeclaration = context.uniqueDeclaration(named: declaration.name),
+                      isSinkShapedApplicationPortProtocol(indexedDeclaration, context: context) else {
+                    return nil
+                }
+
+                let protocolMethods = file.methodDeclarations.filter { $0.enclosingTypeName == declaration.name }
+                guard let invalidMethod = protocolMethods.first(where: {
+                    !isValidSinkShapedApplicationPortMethod($0, context: context)
+                }) else {
+                    return nil
+                }
+
+                return file.diagnostic(
+                    ruleID: Self.ruleID,
+                    message: "Write-only Application sink port protocols must keep each method intentionally shaped: method '\(invalidMethod.name)' on '\(declaration.name)' must accept exactly one Application contract parameter and no additional payload parameters.",
+                    coordinate: invalidMethod.coordinate
+                )
+            }
+        )
+
         return diagnostics
     }
 }
@@ -1145,7 +1169,7 @@ public struct ApplicationServicesSurfacePolicy: ArchitecturePolicyProtocol {
             forbiddenTerms: providerSpecificSurfaceTerms
         )
 
-        if let diagnostic = applicationServicesTechnicalProjectionDiagnostic(file: file) {
+        if let diagnostic = applicationServicesTechnicalProjectionDiagnostic(file: file, context: context) {
             diagnostics.append(diagnostic)
         }
 
@@ -1251,23 +1275,6 @@ let providerSpecificSurfaceTerms: Set<String> = [
     "workflow path",
     "workflowpath",
     "workflow.md"
-]
-
-private let applicationServicesTechnicalProjectionSourceTypeNames: Set<String> = [
-    "SymphonyCodexRuntimeEventContract",
-    "SymphonyCodexTurnExecutionResultContract",
-    "SymphonyCodexSessionIdentityContract",
-    "SymphonyCodexUsageSnapshotContract",
-    "SymphonyCodexRateLimitSnapshotContract"
-]
-
-private let applicationServicesTechnicalProjectionTargetTypeNames: Set<String> = [
-    "SymphonyWorkerAttemptLogEventContract",
-    "SymphonyLiveSessionContract"
-]
-
-private let applicationServicesTechnicalProjectionSinkTypeNames: Set<String> = [
-    "SymphonyWorkerAttemptLogSinkPortProtocol"
 ]
 
 private let applicationServicesTechnicalProjectionEmitMemberNames: Set<String> = [
@@ -1684,8 +1691,15 @@ private func providerSpecificSurfaceDiagnostics(
     return diagnostics
 }
 
+private struct ApplicationServiceProjectionSinkDependency {
+    let memberName: String
+    let sourceContractNames: Set<String>
+    let targetContractNames: Set<String>
+}
+
 private func applicationServicesTechnicalProjectionDiagnostic(
-    file: ArchitectureFile
+    file: ArchitectureFile,
+    context: ProjectContext
 ) -> ArchitectureDiagnostic? {
     let serviceTypeNames = Set(
         file.topLevelDeclarations.compactMap { declaration -> String? in
@@ -1701,41 +1715,63 @@ private func applicationServicesTechnicalProjectionDiagnostic(
         return nil
     }
 
-    let hasProjectionTargetReference = file.typeReferences.contains { reference in
-        isApplicationServicesTechnicalProjectionTargetTypeName(reference.name)
-    } || file.identifierOccurrences.contains { occurrence in
-        isApplicationServicesTechnicalProjectionTargetTypeName(occurrence.name)
+    let serviceStoredMembers = file.storedMemberDeclarations.filter {
+        serviceTypeNames.contains($0.enclosingTypeName) && !$0.isStatic
     }
-    guard hasProjectionTargetReference else {
-        return nil
-    }
+    let sinkDependencies = applicationServiceProjectionSinkDependencies(
+        from: serviceStoredMembers,
+        context: context
+    )
 
-    let hasSinkDependency = file.storedMemberDeclarations.contains { declaration in
-        declaration.typeNames.contains(where: isApplicationServicesTechnicalProjectionSinkTypeName)
-    }
+    let hasServiceLevelProjectionPipeline = sinkDependencies.contains { sinkDependency in
+        let sourceContractNames = sinkDependency.sourceContractNames
+        let targetContractNames = sinkDependency.targetContractNames
 
-    let hasEmitCall = file.memberCallOccurrences.contains { occurrence in
-        applicationServicesTechnicalProjectionEmitMemberNames.contains(occurrence.memberName)
-    }
+        guard !sourceContractNames.isEmpty,
+              !targetContractNames.isEmpty,
+              surfaceHandlesApplicationContracts(
+                sourceContractNames,
+                methodDeclarations: file.methodDeclarations,
+                initializerDeclarations: file.initializerDeclarations,
+                storedMemberDeclarations: serviceStoredMembers,
+                operationalUseOccurrences: file.operationalUseOccurrences,
+                enclosingTypeNames: serviceTypeNames
+              ),
+              surfaceConstructsOrReferencesApplicationContracts(
+                targetContractNames,
+                methodDeclarations: file.methodDeclarations,
+                storedMemberDeclarations: serviceStoredMembers,
+                operationalUseOccurrences: file.operationalUseOccurrences,
+                typeReferences: file.typeReferences,
+                identifierOccurrences: file.identifierOccurrences,
+                enclosingTypeNames: serviceTypeNames
+              ) else {
+            return false
+        }
 
-    let storesProjectionTargetsAtServiceLevel = file.storedMemberDeclarations.first { declaration in
-        serviceTypeNames.contains(declaration.enclosingTypeName)
-            && declaration.typeNames.contains(where: isApplicationServicesTechnicalProjectionTargetTypeName)
-    } != nil
+        let storesProjectionTargetsAtServiceLevel = storedMemberDeclarationsReferenceApplicationContracts(
+            serviceStoredMembers,
+            referenceApplicationContractsNamed: targetContractNames
+        )
+
+        let emitsProjectionTargetsAtServiceLevel = file.operationalUseOccurrences.contains { occurrence in
+            serviceTypeNames.contains(occurrence.enclosingTypeName)
+                && occurrence.baseName == sinkDependency.memberName
+                && applicationServicesTechnicalProjectionEmitMemberNames.contains(occurrence.memberName)
+        }
+
+        return storesProjectionTargetsAtServiceLevel || emitsProjectionTargetsAtServiceLevel
+    }
 
     let nestedProjectionHelper = file.nestedNominalDeclarations.first { declaration in
         isNestedApplicationServiceTechnicalProjectionHelper(
             declaration: declaration,
-            file: file
+            file: file,
+            context: context
         )
     }
 
-    let hasServiceLevelProjectionEmission = hasSinkDependency && hasEmitCall
-    let hasServiceLevelProjectionStorage = storesProjectionTargetsAtServiceLevel
-
-    guard nestedProjectionHelper != nil
-        || hasServiceLevelProjectionEmission
-        || hasServiceLevelProjectionStorage else {
+    guard hasServiceLevelProjectionPipeline || nestedProjectionHelper != nil else {
         return nil
     }
 
@@ -1766,53 +1802,231 @@ private func applicationUseCaseSurfaceProjectionMessage(
 
 private func isNestedApplicationServiceTechnicalProjectionHelper(
     declaration: ArchitectureNestedNominalDeclaration,
-    file: ArchitectureFile
+    file: ArchitectureFile,
+    context: ProjectContext
 ) -> Bool {
     let methods = file.methodDeclarations.filter { $0.enclosingTypeName == declaration.name }
     let initializers = file.initializerDeclarations.filter { $0.enclosingTypeName == declaration.name }
-    let storedMembers = file.storedMemberDeclarations.filter { $0.enclosingTypeName == declaration.name }
+    let storedMembers = file.storedMemberDeclarations.filter {
+        $0.enclosingTypeName == declaration.name && !$0.isStatic
+    }
+    let sinkDependencies = applicationServiceProjectionSinkDependencies(
+        from: storedMembers,
+        context: context
+    )
 
-    let handlesTechnicalSourceContracts =
-        methods.contains { declaration in
-            declaration.parameterTypeNames.contains(where: isApplicationServicesTechnicalProjectionSourceTypeName)
-        }
-        || initializers.contains { declaration in
-            declaration.parameterTypeNames.contains(where: isApplicationServicesTechnicalProjectionSourceTypeName)
+    return sinkDependencies.contains { sinkDependency in
+        let sourceContractNames = sinkDependency.sourceContractNames
+        let targetContractNames = sinkDependency.targetContractNames
+
+        guard !sourceContractNames.isEmpty,
+              !targetContractNames.isEmpty,
+              surfaceHandlesApplicationContracts(
+                sourceContractNames,
+                methodDeclarations: methods,
+                initializerDeclarations: initializers,
+                storedMemberDeclarations: storedMembers,
+                operationalUseOccurrences: file.operationalUseOccurrences,
+                enclosingTypeNames: Set([declaration.name])
+              ) else {
+            return false
         }
 
-    guard handlesTechnicalSourceContracts else {
+        let storesProjectionTargets = storedMemberDeclarationsReferenceApplicationContracts(
+            storedMembers,
+            referenceApplicationContractsNamed: targetContractNames
+        )
+        let returnsProjectionTargets = methods.contains { method in
+            method.returnTypeNames.contains { returnTypeName in
+                targetContractNames.contains(canonicalArchitectureTypeName(returnTypeName))
+            }
+        }
+        let emitsProjectionTargets = file.operationalUseOccurrences.contains { occurrence in
+            occurrence.enclosingTypeName == declaration.name
+                && occurrence.baseName == sinkDependency.memberName
+                && applicationServicesTechnicalProjectionEmitMemberNames.contains(occurrence.memberName)
+        }
+
+        return storesProjectionTargets || returnsProjectionTargets || emitsProjectionTargets
+    }
+}
+
+private func applicationServiceProjectionSinkDependencies(
+    from storedMembers: [ArchitectureStoredMemberDeclaration],
+    context: ProjectContext
+) -> [ApplicationServiceProjectionSinkDependency] {
+    storedMembers.compactMap { storedMember in
+        for rawTypeName in storedMember.typeNames {
+            let typeName = canonicalArchitectureTypeName(rawTypeName)
+            guard let declaration = context.uniqueDeclaration(named: typeName),
+                  isSinkShapedApplicationPortProtocol(declaration, context: context) else {
+                continue
+            }
+
+            let acceptedContractNames = acceptedApplicationContractNames(
+                for: declaration,
+                context: context
+            )
+            let sourceContractNames = Set(
+                acceptedContractNames.filter { !isProjectionShapedApplicationContractName($0) }
+            )
+            let targetContractNames = Set(
+                acceptedContractNames.filter(isProjectionShapedApplicationContractName)
+            )
+
+            guard !sourceContractNames.isEmpty, !targetContractNames.isEmpty else {
+                continue
+            }
+
+            return ApplicationServiceProjectionSinkDependency(
+                memberName: storedMember.name,
+                sourceContractNames: sourceContractNames,
+                targetContractNames: targetContractNames
+            )
+        }
+
+        return nil
+    }
+}
+
+private func acceptedApplicationContractNames(
+    for declaration: IndexedDeclaration,
+    context: ProjectContext
+) -> Set<String> {
+    Set(declaration.methodShapes.flatMap { methodShape in
+        methodShape.parameterTypeNames.compactMap { rawTypeName in
+            let typeName = canonicalArchitectureTypeName(rawTypeName)
+            guard let acceptedDeclaration = context.uniqueDeclaration(named: typeName),
+                  isApplicationContractDeclaration(acceptedDeclaration) else {
+                return nil
+            }
+
+            return acceptedDeclaration.name
+        }
+    })
+}
+
+private func isSinkShapedApplicationPortProtocol(
+    _ declaration: IndexedDeclaration,
+    context: ProjectContext
+) -> Bool {
+    guard declaration.roleFolder == .applicationPortsProtocols,
+          !declaration.methodShapes.isEmpty,
+          declaration.methodShapes.allSatisfy(\.returnsVoidLike) else {
         return false
     }
 
-    let storesProjectionTargets = storedMembers.contains { declaration in
-        declaration.typeNames.contains(where: isApplicationServicesTechnicalProjectionTargetTypeName)
-    }
-
-    let returnsProjectionTargets = methods.contains { declaration in
-        declaration.returnTypeNames.contains(where: isApplicationServicesTechnicalProjectionTargetTypeName)
-    }
-
-    let hasSinkDependency = storedMembers.contains { declaration in
-        declaration.typeNames.contains(where: isApplicationServicesTechnicalProjectionSinkTypeName)
-    }
-
-    let hasEmitCall = file.memberCallOccurrences.contains { occurrence in
-        applicationServicesTechnicalProjectionEmitMemberNames.contains(occurrence.memberName)
-    }
-
-    return storesProjectionTargets || returnsProjectionTargets || (hasSinkDependency && hasEmitCall)
+    return !acceptedApplicationContractNames(for: declaration, context: context).isEmpty
 }
 
-private func isApplicationServicesTechnicalProjectionSourceTypeName(_ typeName: String) -> Bool {
-    applicationServicesTechnicalProjectionSourceTypeNames.contains(typeName)
+private func isValidSinkShapedApplicationPortMethod(
+    _ declaration: ArchitectureMethodDeclaration,
+    context: ProjectContext
+) -> Bool {
+    let normalizedParameterTypeNames = declaration.parameterTypeNames.map(canonicalArchitectureTypeName)
+    let applicationContractParameterCount = normalizedParameterTypeNames.reduce(into: 0) { count, typeName in
+        guard let indexedDeclaration = context.uniqueDeclaration(named: typeName),
+              isApplicationContractDeclaration(indexedDeclaration) else {
+            return
+        }
+
+        count += 1
+    }
+
+    return applicationContractParameterCount == 1 && normalizedParameterTypeNames.count == 1
 }
 
-private func isApplicationServicesTechnicalProjectionTargetTypeName(_ typeName: String) -> Bool {
-    applicationServicesTechnicalProjectionTargetTypeNames.contains(typeName)
+private func surfaceHandlesApplicationContracts(
+    _ contractNames: Set<String>,
+    methodDeclarations: [ArchitectureMethodDeclaration],
+    initializerDeclarations: [ArchitectureInitializerDeclaration],
+    storedMemberDeclarations: [ArchitectureStoredMemberDeclaration],
+    operationalUseOccurrences: [ArchitectureOperationalUseOccurrence],
+    enclosingTypeNames: Set<String>
+) -> Bool {
+    if methodDeclarations.contains(where: { declaration in
+        enclosingTypeNames.contains(declaration.enclosingTypeName)
+            && declaration.parameterTypeNames.contains(where: {
+                contractNames.contains(canonicalArchitectureTypeName($0))
+            })
+    }) {
+        return true
+    }
+
+    if initializerDeclarations.contains(where: { declaration in
+        enclosingTypeNames.contains(declaration.enclosingTypeName)
+            && declaration.parameterTypeNames.contains(where: {
+                contractNames.contains(canonicalArchitectureTypeName($0))
+            })
+    }) {
+        return true
+    }
+
+    if storedMemberDeclarationsReferenceApplicationContracts(
+        storedMemberDeclarations,
+        referenceApplicationContractsNamed: contractNames
+    ) {
+        return true
+    }
+
+    return operationalUseOccurrences.contains { occurrence in
+        enclosingTypeNames.contains(occurrence.enclosingTypeName)
+            && occurrence.memberName == "callAsFunction"
+            && contractNames.contains(canonicalArchitectureTypeName(occurrence.baseName))
+    }
 }
 
-private func isApplicationServicesTechnicalProjectionSinkTypeName(_ typeName: String) -> Bool {
-    applicationServicesTechnicalProjectionSinkTypeNames.contains(typeName)
+private func surfaceConstructsOrReferencesApplicationContracts(
+    _ contractNames: Set<String>,
+    methodDeclarations: [ArchitectureMethodDeclaration],
+    storedMemberDeclarations: [ArchitectureStoredMemberDeclaration],
+    operationalUseOccurrences: [ArchitectureOperationalUseOccurrence],
+    typeReferences: [ArchitectureTypeReference],
+    identifierOccurrences: [ArchitectureIdentifierOccurrence],
+    enclosingTypeNames: Set<String>
+) -> Bool {
+    if storedMemberDeclarationsReferenceApplicationContracts(
+        storedMemberDeclarations,
+        referenceApplicationContractsNamed: contractNames
+    ) {
+        return true
+    }
+
+    if methodDeclarations.contains(where: { declaration in
+        enclosingTypeNames.contains(declaration.enclosingTypeName)
+            && declaration.returnTypeNames.contains(where: {
+                contractNames.contains(canonicalArchitectureTypeName($0))
+            })
+    }) {
+        return true
+    }
+
+    if operationalUseOccurrences.contains(where: { occurrence in
+        enclosingTypeNames.contains(occurrence.enclosingTypeName)
+            && occurrence.memberName == "callAsFunction"
+            && contractNames.contains(canonicalArchitectureTypeName(occurrence.baseName))
+    }) {
+        return true
+    }
+
+    if typeReferences.contains(where: { contractNames.contains(canonicalArchitectureTypeName($0.name)) }) {
+        return true
+    }
+
+    return identifierOccurrences.contains { occurrence in
+        contractNames.contains(canonicalArchitectureTypeName(occurrence.name))
+    }
+}
+
+private func storedMemberDeclarationsReferenceApplicationContracts(
+    _ declarations: [ArchitectureStoredMemberDeclaration],
+    referenceApplicationContractsNamed contractNames: Set<String>
+) -> Bool {
+    declarations.contains { declaration in
+        declaration.typeNames.contains { typeName in
+            contractNames.contains(canonicalArchitectureTypeName(typeName))
+        }
+    }
 }
 
 private func useCaseMethodKeepsProjectionOrTranslationInline(

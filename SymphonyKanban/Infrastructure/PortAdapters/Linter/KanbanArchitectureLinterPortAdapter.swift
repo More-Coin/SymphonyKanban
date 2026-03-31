@@ -6,22 +6,25 @@ struct KanbanArchitectureLinterPortAdapter: ArchitectureLintPortProtocol {
     private let policies: [any ArchitecturePolicyProtocol]
     private let sourceFileDiscovery: SourceFileDiscoveryPortProtocol
     private let repoRelativePathModel: LinterRepoRelativePathModel
+    private let projectContextModel: LinterProjectContextModel
 
     init(
         policies: [any ArchitecturePolicyProtocol],
         sourceFileDiscovery: SourceFileDiscoveryPortProtocol,
-        repoRelativePathModel: LinterRepoRelativePathModel = LinterRepoRelativePathModel()
+        repoRelativePathModel: LinterRepoRelativePathModel = LinterRepoRelativePathModel(),
+        projectContextModel: LinterProjectContextModel = LinterProjectContextModel()
     ) {
         self.policies = policies
         self.sourceFileDiscovery = sourceFileDiscovery
         self.repoRelativePathModel = repoRelativePathModel
+        self.projectContextModel = projectContextModel
     }
 
     func lintProject(at rootURL: URL) throws -> KanbanArchitectureLintResultContract {
         let classifier = ArchitecturePathClassificationPolicy()
         let fileURLs = try sourceFileDiscovery.discoverSwiftFiles(in: rootURL)
         let files = try fileURLs.map { try loadSourceFile(from: $0, rootURL: rootURL, classifier: classifier) }
-        let context = buildProjectContext(from: files)
+        let context = projectContextModel.toDomain(files)
         let architectureFiles = files.map(\.architectureFile)
         let diagnostics = architectureFiles.flatMap { file in
             policies.flatMap { policy in
@@ -30,23 +33,6 @@ struct KanbanArchitectureLinterPortAdapter: ArchitectureLintPortProtocol {
         }
         let orderedDiagnostics = ArchitectureDiagnosticOrderingPolicy().ordered(diagnostics)
         return KanbanArchitectureLintResultContract(diagnostics: orderedDiagnostics)
-    }
-
-    private func buildProjectContext(from files: [SourceFileRecord]) -> ProjectContext {
-        let declarations = files.flatMap { file in
-            file.topLevelDeclarations.map { declaration in
-                IndexedDeclaration(
-                    name: declaration.name,
-                    kind: declaration.kind,
-                    inheritedTypeNames: declaration.inheritedTypeNames,
-                    repoRelativePath: file.repoRelativePath,
-                    layer: file.classification.layer,
-                    roleFolder: file.classification.roleFolder
-                )
-            }
-        }
-
-        return ProjectContext(declarations: declarations)
     }
 
     private func loadSourceFile(
