@@ -14,22 +14,18 @@ let package = Package(
         .executable(
             name: "symphony",
             targets: ["SymphonyCLI"]
-        ),
-        .executable(
-            name: "kanban-architecture-linter",
-            targets: ["KanbanArchitectureLinterCLI"]
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "603.0.0")
+        .package(
+            url: "ssh://git@github.com/More-Coin/KanbanArchitectureLinter.git",
+            from: "0.1.0"
+        )
     ],
     targets: [
         .target(
             name: "SymphonyKanban",
-            dependencies: [
-                .product(name: "SwiftParser", package: "swift-syntax"),
-                .product(name: "SwiftSyntax", package: "swift-syntax")
-            ],
+            dependencies: [],
             path: "SymphonyKanban",
             exclude: [
                 "App/README_App.md",
@@ -48,14 +44,11 @@ let package = Package(
             dependencies: ["SymphonyKanban"],
             path: "Executables/SymphonyCLI"
         ),
-        .executableTarget(
-            name: "KanbanArchitectureLinterCLI",
-            dependencies: ["SymphonyKanban"],
-            path: "Executables/KanbanArchitectureLinterCLI"
-        ),
         .testTarget(
             name: "SymphonyKanbanTests",
-            dependencies: ["SymphonyKanban"],
+            dependencies: [
+                "SymphonyKanban"
+            ],
             path: "SymphonyKanbanTests"
         )
     ]

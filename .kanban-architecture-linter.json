@@ -1,0 +1,21 @@
+{
+  "testRootName": "SymphonyKanbanTests",
+  "runtimeNamespaceSegments": [
+    "Symphony"
+  ],
+  "diagnosticsSubpath": "Diagnostics/KanbanArchitectureLinter",
+  "moduleAliases": {
+    "runtimeSurface": [
+      "SymphonyRuntime"
+    ],
+    "commandSurface": [
+      "SymphonyCLI",
+      "KanbanArchitectureLinterCLI"
+    ],
+    "diagnostics": [
+      "KanbanArchitectureLinterRules"
+    ]
+  },
+  "disabledRuleIDs": [],
+  "disabledRulePrefixes": []
+}

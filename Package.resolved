@@ -1,6 +1,15 @@
 {
-  "originHash" : "7b04b1b76782bc2ed13cb45a8c86a5ac78a71168a4319e2e60600844d56a4d8f",
+  "originHash" : "7cd94d88a1420a4a2a022c36e4d28866fcfd5e238b17382b9dceaa498e91e6b3",
   "pins" : [
+    {
+      "identity" : "kanbanarchitecturelinter",
+      "kind" : "remoteSourceControl",
+      "location" : "ssh://git@github.com/More-Coin/KanbanArchitectureLinter.git",
+      "state" : {
+        "revision" : "94e8adb31696cfb5731db1c48d5399a615611f26",
+        "version" : "0.1.0"
+      }
+    },
     {
       "identity" : "swift-syntax",
       "kind" : "remoteSourceControl",
