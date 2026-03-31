@@ -8,6 +8,8 @@ public struct SymphonyIssue: Equatable, Sendable {
     public let priority: Int?
     public let state: String
     public let stateType: String
+    public let currentStateID: String?
+    public let teamID: String?
     public let branchName: String?
     public let url: String?
     public let labels: [String]
@@ -23,6 +25,8 @@ public struct SymphonyIssue: Equatable, Sendable {
         priority: Int?,
         state: String,
         stateType: String,
+        currentStateID: String? = nil,
+        teamID: String? = nil,
         branchName: String?,
         url: String?,
         labels: [String],
@@ -37,6 +41,8 @@ public struct SymphonyIssue: Equatable, Sendable {
         self.priority = priority
         self.state = state
         self.stateType = stateType
+        self.currentStateID = currentStateID
+        self.teamID = teamID
         self.branchName = branchName
         self.url = url
         self.labels = labels.map { $0.lowercased() }

@@ -1,8 +1,8 @@
 
 public struct FetchSymphonyIssuesUseCase: Sendable {
-    private let issueTrackerReadPort: any SymphonyIssueTrackerReadPortProtocol
+    private let issueTrackerReadPort: any SymphonyIssueTrackerPortProtocol
 
-    public init(issueTrackerReadPort: any SymphonyIssueTrackerReadPortProtocol) {
+    public init(issueTrackerReadPort: any SymphonyIssueTrackerPortProtocol) {
         self.issueTrackerReadPort = issueTrackerReadPort
     }
 

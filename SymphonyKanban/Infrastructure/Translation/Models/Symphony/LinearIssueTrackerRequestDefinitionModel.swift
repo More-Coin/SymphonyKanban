@@ -86,6 +86,42 @@ struct LinearIssueTrackerRequestDefinitionModel {
         )
     }
 
+    func makeTeamWorkflowStatesRequestDefinition(
+        using configuration: LinearNormalizedTrackerConfiguration,
+        authorizationHeader: String,
+        teamID: String,
+        stateType: String
+    ) -> LinearIssueTrackerRequestDefinition {
+        makeRequestDefinition(
+            using: configuration,
+            authorizationHeader: authorizationHeader,
+            operationName: "FetchTeamWorkflowStatesByType",
+            query: teamWorkflowStatesQuery,
+            variables: [
+                "teamId": .string(teamID),
+                "stateType": .string(stateType)
+            ]
+        )
+    }
+
+    func makeIssueUpdateRequestDefinition(
+        using configuration: LinearNormalizedTrackerConfiguration,
+        authorizationHeader: String,
+        issueID: String,
+        stateID: String
+    ) -> LinearIssueTrackerRequestDefinition {
+        makeRequestDefinition(
+            using: configuration,
+            authorizationHeader: authorizationHeader,
+            operationName: "UpdateIssueState",
+            query: issueUpdateQuery,
+            variables: [
+                "issueId": .string(issueID),
+                "stateId": .string(stateID)
+            ]
+        )
+    }
+
     private func makeRequestDefinition(
         using configuration: LinearNormalizedTrackerConfiguration,
         authorizationHeader: String,
@@ -128,7 +164,8 @@ struct LinearIssueTrackerRequestDefinitionModel {
               url
               createdAt
               updatedAt
-              state { name type }
+              state { id name type }
+              team { id }
               labels { nodes { name } }
               inverseRelations {
                 nodes {
@@ -136,7 +173,7 @@ struct LinearIssueTrackerRequestDefinitionModel {
                   relatedIssue {
                     id
                     identifier
-                    state { name type }
+                    state { id name type }
                   }
                 }
               }
@@ -174,7 +211,8 @@ struct LinearIssueTrackerRequestDefinitionModel {
               url
               createdAt
               updatedAt
-              state { name type }
+              state { id name type }
+              team { id }
               labels { nodes { name } }
               inverseRelations {
                 nodes {
@@ -182,7 +220,7 @@ struct LinearIssueTrackerRequestDefinitionModel {
                   relatedIssue {
                     id
                     identifier
-                    state { name type }
+                    state { id name type }
                   }
                 }
               }
@@ -252,7 +290,48 @@ struct LinearIssueTrackerRequestDefinitionModel {
               id
               identifier
               title
-              state { name type }
+              state { id name type }
+              team { id }
+            }
+          }
+        }
+        """
+    }
+
+    private var teamWorkflowStatesQuery: String {
+        """
+        query FetchTeamWorkflowStatesByType($teamId: String!, $stateType: String!) {
+          team(id: $teamId) {
+            id
+            states(filter: { type: { eq: $stateType } }) {
+              nodes {
+                id
+                name
+                type
+                position
+              }
+            }
+          }
+        }
+        """
+    }
+
+    private var issueUpdateQuery: String {
+        """
+        mutation UpdateIssueState($issueId: String!, $stateId: String!) {
+          issueUpdate(
+            id: $issueId,
+            input: {
+              stateId: $stateId
+            }
+          ) {
+            success
+            issue {
+              id
+              identifier
+              title
+              state { id name type }
+              team { id }
             }
           }
         }

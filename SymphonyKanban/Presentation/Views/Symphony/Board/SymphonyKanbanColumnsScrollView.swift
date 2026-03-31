@@ -10,6 +10,7 @@ public struct SymphonyKanbanColumnsScrollView: View {
     private let dropTargetColumnID: String?
     private let appeared: Bool
     private let onCardSelected: (String) -> Void
+    private let onCancelIssue: (String) -> Void
     private let onDropTargetChanged: (String?) -> Void
 
     public init(
@@ -18,6 +19,7 @@ public struct SymphonyKanbanColumnsScrollView: View {
         dropTargetColumnID: String?,
         appeared: Bool,
         onCardSelected: @escaping (String) -> Void,
+        onCancelIssue: @escaping (String) -> Void = { _ in },
         onDropTargetChanged: @escaping (String?) -> Void
     ) {
         self.columns = columns
@@ -25,6 +27,7 @@ public struct SymphonyKanbanColumnsScrollView: View {
         self.dropTargetColumnID = dropTargetColumnID
         self.appeared = appeared
         self.onCardSelected = onCardSelected
+        self.onCancelIssue = onCancelIssue
         self.onDropTargetChanged = onDropTargetChanged
     }
 
@@ -36,6 +39,7 @@ public struct SymphonyKanbanColumnsScrollView: View {
                         viewModel: column,
                         isDropTarget: dropTargetColumnID == column.id,
                         onCardSelected: onCardSelected,
+                        onCancelIssue: onCancelIssue,
                         onDrop: { _ in }
                     )
                     .dropDestination(for: String.self) { items, _ in

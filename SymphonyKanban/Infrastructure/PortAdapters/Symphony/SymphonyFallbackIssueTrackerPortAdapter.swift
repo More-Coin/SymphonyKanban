@@ -1,13 +1,13 @@
-public struct SymphonyFallbackIssueTrackerPortAdapter: SymphonyIssueTrackerReadPortProtocol, Sendable {
+public struct SymphonyFallbackIssueTrackerPortAdapter: SymphonyIssueTrackerPortProtocol, Sendable {
     private let trackerAuthPort: any SymphonyTrackerAuthPortProtocol
-    private let liveGateway: any SymphonyIssueTrackerReadPortProtocol
-    private let mockGateway: any SymphonyIssueTrackerReadPortProtocol
+    private let liveGateway: any SymphonyIssueTrackerPortProtocol
+    private let mockGateway: any SymphonyIssueTrackerPortProtocol
     private let sourceSelectionPolicy: SymphonyIssueTrackerSourceSelectionPolicy
 
     init(
         trackerAuthPort: any SymphonyTrackerAuthPortProtocol,
-        liveGateway: any SymphonyIssueTrackerReadPortProtocol,
-        mockGateway: any SymphonyIssueTrackerReadPortProtocol = SymphonyMockIssueTrackerPortAdapter(),
+        liveGateway: any SymphonyIssueTrackerPortProtocol,
+        mockGateway: any SymphonyIssueTrackerPortProtocol = SymphonyMockIssueTrackerPortAdapter(),
         sourceSelectionPolicy: SymphonyIssueTrackerSourceSelectionPolicy = SymphonyIssueTrackerSourceSelectionPolicy()
     ) {
         self.trackerAuthPort = trackerAuthPort
@@ -44,9 +44,21 @@ public struct SymphonyFallbackIssueTrackerPortAdapter: SymphonyIssueTrackerReadP
         )
     }
 
+    public func updateIssue(
+        _ request: SymphonyIssueUpdateRequestContract,
+        currentIssue: SymphonyIssue,
+        using trackerConfiguration: SymphonyServiceConfigContract.Tracker
+    ) async throws -> SymphonyIssueUpdateResultContract {
+        try await selectedGateway(for: trackerConfiguration).updateIssue(
+            request,
+            currentIssue: currentIssue,
+            using: trackerConfiguration
+        )
+    }
+
     private func selectedGateway(
         for trackerConfiguration: SymphonyServiceConfigContract.Tracker
-    ) -> any SymphonyIssueTrackerReadPortProtocol {
+    ) -> any SymphonyIssueTrackerPortProtocol {
         let authStatus = try? trackerAuthPort.queryStatus(for: trackerConfiguration)
 
         switch sourceSelectionPolicy.selectSource(

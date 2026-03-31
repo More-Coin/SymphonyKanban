@@ -11,6 +11,9 @@ public enum SymphonyIssueTrackerInfrastructureError: StructuredErrorProtocol, Lo
     case linearGraphQLErrors(messages: [String])
     case linearUnknownPayload(details: String)
     case linearMissingEndCursor
+    case missingIssueTeam(issueIdentifier: String)
+    case missingWorkflowState(teamID: String, stateType: String)
+    case linearIssueUpdateFailed(issueIdentifier: String)
 
     public var code: String {
         switch self {
@@ -34,6 +37,12 @@ public enum SymphonyIssueTrackerInfrastructureError: StructuredErrorProtocol, Lo
             return "symphony.tracker.linear_unknown_payload"
         case .linearMissingEndCursor:
             return "symphony.tracker.linear_missing_end_cursor"
+        case .missingIssueTeam:
+            return "symphony.tracker.missing_issue_team"
+        case .missingWorkflowState:
+            return "symphony.tracker.missing_workflow_state"
+        case .linearIssueUpdateFailed:
+            return "symphony.tracker.linear_issue_update_failed"
         }
     }
 
@@ -59,6 +68,12 @@ public enum SymphonyIssueTrackerInfrastructureError: StructuredErrorProtocol, Lo
             return "The Linear API returned a payload that could not be normalized."
         case .linearMissingEndCursor:
             return "The Linear API reported more pages but did not return an end cursor."
+        case .missingIssueTeam:
+            return "The selected Linear issue did not include the owning team needed for a state update."
+        case .missingWorkflowState:
+            return "Linear did not return a matching workflow state for the requested transition."
+        case .linearIssueUpdateFailed:
+            return "The Linear issue update mutation did not succeed."
         }
     }
 
@@ -73,7 +88,10 @@ public enum SymphonyIssueTrackerInfrastructureError: StructuredErrorProtocol, Lo
              .staleTrackerSession,
              .linearGraphQLErrors,
              .linearUnknownPayload,
-             .linearMissingEndCursor:
+             .linearMissingEndCursor,
+             .missingIssueTeam,
+             .missingWorkflowState,
+             .linearIssueUpdateFailed:
             return false
         }
     }
@@ -103,6 +121,12 @@ public enum SymphonyIssueTrackerInfrastructureError: StructuredErrorProtocol, Lo
             return details
         case .linearMissingEndCursor:
             return "The GraphQL pageInfo block returned `hasNextPage=true` without a non-empty `endCursor`."
+        case .missingIssueTeam(let issueIdentifier):
+            return "Issue `\(issueIdentifier)` must include `team.id` in the Linear payload before Symphony can update its state."
+        case .missingWorkflowState(let teamID, let stateType):
+            return "Team `\(teamID)` did not expose a workflow state for type `\(stateType)`."
+        case .linearIssueUpdateFailed(let issueIdentifier):
+            return "Linear returned `success=false` for issue `\(issueIdentifier)`."
         }
     }
 

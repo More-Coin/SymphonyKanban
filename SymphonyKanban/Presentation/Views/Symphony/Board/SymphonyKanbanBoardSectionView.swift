@@ -11,6 +11,7 @@ public struct SymphonyKanbanBoardSectionView: View {
     private let dropTargetColumnID: String?
     private let appeared: Bool
     private let onCardSelected: (String) -> Void
+    private let onCancelIssue: (String) -> Void
     private let onDropTargetChanged: (String?) -> Void
 
     public init(
@@ -19,6 +20,7 @@ public struct SymphonyKanbanBoardSectionView: View {
         dropTargetColumnID: String?,
         appeared: Bool,
         onCardSelected: @escaping (String) -> Void,
+        onCancelIssue: @escaping (String) -> Void = { _ in },
         onDropTargetChanged: @escaping (String?) -> Void
     ) {
         self.section = section
@@ -26,6 +28,7 @@ public struct SymphonyKanbanBoardSectionView: View {
         self.dropTargetColumnID = dropTargetColumnID
         self.appeared = appeared
         self.onCardSelected = onCardSelected
+        self.onCancelIssue = onCancelIssue
         self.onDropTargetChanged = onDropTargetChanged
     }
 
@@ -57,6 +60,7 @@ public struct SymphonyKanbanBoardSectionView: View {
                 dropTargetColumnID: dropTargetColumnID,
                 appeared: appeared,
                 onCardSelected: onCardSelected,
+                onCancelIssue: onCancelIssue,
                 onDropTargetChanged: onDropTargetChanged
             )
         }

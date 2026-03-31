@@ -226,6 +226,18 @@ final class WorkerAttemptIssueTrackerReadSpy: @unchecked Sendable, SymphonyIssue
             return responses.removeFirst()
         }
     }
+
+    func updateIssue(
+        _: SymphonyIssueUpdateRequestContract,
+        currentIssue: SymphonyIssue,
+        using _: SymphonyServiceConfigContract.Tracker
+    ) async throws -> SymphonyIssueUpdateResultContract {
+        SymphonyIssueUpdateResultContract(
+            issueID: currentIssue.id,
+            issueIdentifier: currentIssue.identifier,
+            appliedStateID: "worker-state"
+        )
+    }
 }
 
 final class WorkerAttemptPromptRendererSpy: @unchecked Sendable, SymphonyPromptRendererPortProtocol {

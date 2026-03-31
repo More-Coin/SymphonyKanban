@@ -15,7 +15,7 @@ private func symphonyDefaultLinearRequestExecutor(
 }
 
 public struct SymphonyLinearIssueTrackerGateway:
-    SymphonyIssueTrackerReadPortProtocol,
+    SymphonyIssueTrackerPortProtocol,
     SymphonyTrackerScopeReadPortProtocol,
     @unchecked Sendable
 {
@@ -220,6 +220,68 @@ public struct SymphonyLinearIssueTrackerGateway:
         return try nodes.map { try $0.toDomain() }
     }
 
+    public func updateIssue(
+        _ request: SymphonyIssueUpdateRequestContract,
+        currentIssue: SymphonyIssue,
+        using trackerConfiguration: SymphonyServiceConfigContract.Tracker
+    ) async throws -> SymphonyIssueUpdateResultContract {
+        guard let stateChange = request.stateChange else {
+            throw SymphonyIssueUpdateApplicationError.missingStateChange(
+                issueIdentifier: request.issueIdentifier
+            )
+        }
+
+        guard let teamID = normalizedValue(currentIssue.teamID) else {
+            throw SymphonyIssueTrackerInfrastructureError.missingIssueTeam(
+                issueIdentifier: currentIssue.identifier
+            )
+        }
+
+        let normalizedTracker = try configurationModel.fromContract(
+            from: trackerConfiguration,
+            requireScope: false
+        )
+        let authorizationHeader = try await authorizationProvider.authorizationHeader()
+        let targetState = try await fetchWorkflowState(
+            teamID: teamID,
+            targetStateType: stateChange.targetStateType,
+            using: normalizedTracker,
+            authorizationHeader: authorizationHeader
+        )
+        let requestDefinition = requestDefinitionModel.makeIssueUpdateRequestDefinition(
+            using: normalizedTracker,
+            authorizationHeader: authorizationHeader,
+            issueID: currentIssue.id,
+            stateID: targetState.id
+        )
+        let transportRequest = try requestBuilder.makeRequest(
+            requestDefinition,
+            using: jsonEncoder,
+            timeoutInterval: Self.defaultTimeoutInterval
+        )
+        let response = try await performResponse(for: transportRequest)
+
+        guard let updatePayload = response.data?.issueUpdate else {
+            throw SymphonyIssueTrackerInfrastructureError.linearUnknownPayload(
+                details: "The issue update response was missing `data.issueUpdate`."
+            )
+        }
+
+        guard updatePayload.success == true else {
+            throw SymphonyIssueTrackerInfrastructureError.linearIssueUpdateFailed(
+                issueIdentifier: currentIssue.identifier
+            )
+        }
+
+        let updatedIssue = try updatePayload.issue?.toDomain()
+
+        return SymphonyIssueUpdateResultContract(
+            issueID: updatedIssue?.id ?? currentIssue.id,
+            issueIdentifier: updatedIssue?.identifier ?? currentIssue.identifier,
+            appliedStateID: targetState.id
+        )
+    }
+
     public func fetchTeams(
         using trackerConfiguration: SymphonyServiceConfigContract.Tracker
     ) async throws -> [SymphonyTrackerScopeOptionContract] {
@@ -336,5 +398,86 @@ public struct SymphonyLinearIssueTrackerGateway:
         }
 
         return payload
+    }
+
+    private func fetchWorkflowState(
+        teamID: String,
+        targetStateType: String,
+        using configuration: LinearNormalizedTrackerConfiguration,
+        authorizationHeader: String
+    ) async throws -> WorkflowStateSelection {
+        let requestDefinition = requestDefinitionModel.makeTeamWorkflowStatesRequestDefinition(
+            using: configuration,
+            authorizationHeader: authorizationHeader,
+            teamID: teamID,
+            stateType: targetStateType
+        )
+        let request = try requestBuilder.makeRequest(
+            requestDefinition,
+            using: jsonEncoder,
+            timeoutInterval: Self.defaultTimeoutInterval
+        )
+        let response = try await performResponse(for: request)
+
+        guard let states = response.data?.team?.states?.nodes else {
+            throw SymphonyIssueTrackerInfrastructureError.linearUnknownPayload(
+                details: "The workflow state response was missing `data.team.states.nodes`."
+            )
+        }
+
+        let selection = states
+            .compactMap(WorkflowStateSelection.init)
+            .sorted(by: WorkflowStateSelection.ordering)
+            .first
+
+        guard let selection else {
+            throw SymphonyIssueTrackerInfrastructureError.missingWorkflowState(
+                teamID: teamID,
+                stateType: targetStateType
+            )
+        }
+
+        return selection
+    }
+
+    private func normalizedValue(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let trimmed, trimmed.isEmpty == false else {
+            return nil
+        }
+
+        return trimmed
+    }
+
+    private struct WorkflowStateSelection {
+        let id: String
+        let name: String
+        let position: Double?
+
+        init?(_ model: LinearWorkflowStateNodeModel) {
+            guard let id = model.id?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  id.isEmpty == false else {
+                return nil
+            }
+
+            let trimmedName = model.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+            self.id = id
+            self.name = trimmedName?.isEmpty == false ? trimmedName! : id
+            self.position = model.position?.doubleValue
+        }
+
+        static func ordering(
+            _ lhs: WorkflowStateSelection,
+            _ rhs: WorkflowStateSelection
+        ) -> Bool {
+            let lhsPosition = lhs.position ?? Double.greatestFiniteMagnitude
+            let rhsPosition = rhs.position ?? Double.greatestFiniteMagnitude
+
+            if lhsPosition != rhsPosition {
+                return lhsPosition < rhsPosition
+            }
+
+            return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+        }
     }
 }

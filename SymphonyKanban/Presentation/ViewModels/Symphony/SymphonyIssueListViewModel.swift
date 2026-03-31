@@ -58,6 +58,8 @@ public struct SymphonyIssueListRowViewModel: Equatable, Sendable, Identifiable {
     public let lastEventTime: String?
     public let tokenCount: String?
     public let isSelected: Bool
+    public let canCancel: Bool
+    public let isUpdating: Bool
 
     public init(
         id: String,
@@ -72,7 +74,9 @@ public struct SymphonyIssueListRowViewModel: Equatable, Sendable, Identifiable {
         lastEvent: String?,
         lastEventTime: String?,
         tokenCount: String?,
-        isSelected: Bool
+        isSelected: Bool,
+        canCancel: Bool = false,
+        isUpdating: Bool = false
     ) {
         self.id = id
         self.identifier = identifier
@@ -87,5 +91,7 @@ public struct SymphonyIssueListRowViewModel: Equatable, Sendable, Identifiable {
         self.lastEventTime = lastEventTime
         self.tokenCount = tokenCount
         self.isSelected = isSelected
+        self.canCancel = canCancel
+        self.isUpdating = isUpdating
     }
 }

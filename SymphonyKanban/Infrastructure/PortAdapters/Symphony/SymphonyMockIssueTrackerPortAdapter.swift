@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SymphonyMockIssueTrackerPortAdapter: SymphonyIssueTrackerReadPortProtocol, Sendable {
+public struct SymphonyMockIssueTrackerPortAdapter: SymphonyIssueTrackerPortProtocol, Sendable {
     public init() {}
 
     public func fetchCandidateIssues(
@@ -30,6 +30,36 @@ public struct SymphonyMockIssueTrackerPortAdapter: SymphonyIssueTrackerReadPortP
         return Self.mockIssues.filter {
             normalizedIssueIDs.contains($0.id) || normalizedIssueIDs.contains($0.identifier)
         }
+    }
+
+    public func updateIssue(
+        _ request: SymphonyIssueUpdateRequestContract,
+        currentIssue: SymphonyIssue,
+        using _: SymphonyServiceConfigContract.Tracker
+    ) async throws -> SymphonyIssueUpdateResultContract {
+        _ = currentIssue
+
+        guard let stateChange = request.stateChange else {
+            throw SymphonyIssueUpdateApplicationError.missingStateChange(
+                issueIdentifier: request.issueIdentifier
+            )
+        }
+
+        let matchedIssue = Self.mockIssues.first {
+            $0.identifier == request.issueIdentifier || $0.id == request.issueIdentifier
+        }
+
+        guard let matchedIssue else {
+            throw SymphonyIssueUpdateApplicationError.issueNotFound(
+                issueIdentifier: request.issueIdentifier
+            )
+        }
+
+        return SymphonyIssueUpdateResultContract(
+            issueID: matchedIssue.id,
+            issueIdentifier: matchedIssue.identifier,
+            appliedStateID: "mock-\(stateChange.targetStateType)"
+        )
     }
 
     static let mockIssues: [SymphonyIssue] = [

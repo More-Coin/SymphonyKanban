@@ -4,9 +4,12 @@ import Testing
 struct SymphonyIssueCatalogServiceTests {
     @Test
     func readyBindingLoadsIssuesFromConfiguredTrackerSource() async throws {
-        let service = SymphonyIssueCatalogService(
+        let service = SymphonyIssueCatalogWorkflowService(
             fetchIssuesUseCase: FetchSymphonyIssuesUseCase(
                 issueTrackerReadPort: SymphonyMockIssueTrackerPortAdapter()
+            ),
+            updateIssueUseCase: UpdateSymphonyIssueUseCase(
+                issueTrackerPort: SymphonyMockIssueTrackerPortAdapter()
             )
         )
         let activeBinding = makeActiveBindingContext()
@@ -23,9 +26,12 @@ struct SymphonyIssueCatalogServiceTests {
     @Test
     func readyBindingRequestsCombinedActiveAndTerminalStateTypes() async throws {
         let trackerSpy = IssueCatalogTrackerReadSpy()
-        let service = SymphonyIssueCatalogService(
+        let service = SymphonyIssueCatalogWorkflowService(
             fetchIssuesUseCase: FetchSymphonyIssuesUseCase(
                 issueTrackerReadPort: trackerSpy
+            ),
+            updateIssueUseCase: UpdateSymphonyIssueUseCase(
+                issueTrackerPort: trackerSpy
             )
         )
 
@@ -38,9 +44,12 @@ struct SymphonyIssueCatalogServiceTests {
 
     @Test
     func failedBindingIsCarriedAsPartialFailureWithoutThrowing() async throws {
-        let service = SymphonyIssueCatalogService(
+        let service = SymphonyIssueCatalogWorkflowService(
             fetchIssuesUseCase: FetchSymphonyIssuesUseCase(
                 issueTrackerReadPort: SymphonyMockIssueTrackerPortAdapter()
+            ),
+            updateIssueUseCase: UpdateSymphonyIssueUseCase(
+                issueTrackerPort: SymphonyMockIssueTrackerPortAdapter()
             )
         )
 
@@ -65,6 +74,33 @@ struct SymphonyIssueCatalogServiceTests {
         #expect(result.failedBindingCount == 1)
         #expect(result.bindingResults.first?.loadState == .failed)
         #expect(result.bindingResults.first?.loadError?.message == "Binding failed.")
+    }
+
+    @Test
+    func cancelIssueMutatesAndRefetchesAuthoritativeCatalog() async throws {
+        let trackerSpy = IssueCatalogTrackerReadSpy(
+            fetchIssuesResponses: [
+                [makeIssue(identifier: "KAN-142", state: "Backlog", stateType: "backlog")],
+                [makeIssue(identifier: "KAN-142", state: "Canceled", stateType: "canceled")]
+            ]
+        )
+        let service = SymphonyIssueCatalogWorkflowService(
+            fetchIssuesUseCase: FetchSymphonyIssuesUseCase(
+                issueTrackerReadPort: trackerSpy
+            ),
+            updateIssueUseCase: UpdateSymphonyIssueUseCase(
+                issueTrackerPort: trackerSpy
+            )
+        )
+
+        let result = try await service.cancelIssue(
+            issueIdentifier: "KAN-142",
+            activeBindings: [makeActiveBindingContext()]
+        )
+
+        #expect(await trackerSpy.recordedUpdateRequests().map(\.issueIdentifier) == ["KAN-142"])
+        #expect(result.issues.first?.stateType == "canceled")
+        #expect(await trackerSpy.fetchIssuesCallCount() == 2)
     }
 }
 
@@ -112,6 +148,13 @@ private func makeActiveBindingContext() -> SymphonyActiveWorkspaceBindingContext
 
 private actor IssueCatalogTrackerReadSpy: SymphonyIssueTrackerReadPortProtocol {
     private var recordedStateTypesValue: [String] = []
+    private var fetchIssuesResponses: [[SymphonyIssue]]
+    private var updateRequests: [SymphonyIssueUpdateRequestContract] = []
+    private var fetchIssuesCallsValue = 0
+
+    init(fetchIssuesResponses: [[SymphonyIssue]] = []) {
+        self.fetchIssuesResponses = fetchIssuesResponses
+    }
 
     func fetchCandidateIssues(
         using _: SymphonyServiceConfigContract.Tracker
@@ -124,7 +167,13 @@ private actor IssueCatalogTrackerReadSpy: SymphonyIssueTrackerReadPortProtocol {
         using _: SymphonyServiceConfigContract.Tracker
     ) async throws -> [SymphonyIssue] {
         recordedStateTypesValue = stateTypes
-        return []
+        fetchIssuesCallsValue += 1
+
+        guard fetchIssuesResponses.isEmpty == false else {
+            return []
+        }
+
+        return fetchIssuesResponses.removeFirst()
     }
 
     func fetchIssueStates(
@@ -134,7 +183,52 @@ private actor IssueCatalogTrackerReadSpy: SymphonyIssueTrackerReadPortProtocol {
         []
     }
 
+    func updateIssue(
+        _ request: SymphonyIssueUpdateRequestContract,
+        currentIssue: SymphonyIssue,
+        using _: SymphonyServiceConfigContract.Tracker
+    ) async throws -> SymphonyIssueUpdateResultContract {
+        updateRequests.append(request)
+        return SymphonyIssueUpdateResultContract(
+            issueID: currentIssue.id,
+            issueIdentifier: currentIssue.identifier,
+            appliedStateID: "updated-state"
+        )
+    }
+
     func recordedStateTypes() -> [String] {
         recordedStateTypesValue
     }
+
+    func recordedUpdateRequests() -> [SymphonyIssueUpdateRequestContract] {
+        updateRequests
+    }
+
+    func fetchIssuesCallCount() -> Int {
+        fetchIssuesCallsValue
+    }
+}
+
+private func makeIssue(
+    identifier: String,
+    state: String,
+    stateType: String
+) -> SymphonyIssue {
+    SymphonyIssue(
+        id: "issue-\(identifier.lowercased())",
+        identifier: identifier,
+        title: "Issue \(identifier)",
+        description: nil,
+        priority: 1,
+        state: state,
+        stateType: stateType,
+        currentStateID: "state-\(stateType)",
+        teamID: "team-1",
+        branchName: nil,
+        url: nil,
+        labels: [],
+        blockedBy: [],
+        createdAt: nil,
+        updatedAt: nil
+    )
 }

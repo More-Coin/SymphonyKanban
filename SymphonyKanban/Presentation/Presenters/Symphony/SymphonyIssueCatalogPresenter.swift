@@ -12,7 +12,9 @@ public struct SymphonyIssueCatalogPresenter {
     public func present(
         _ collection: SymphonyIssueCollectionContract,
         displayMode: SymphonyIssueCatalogDisplayModeContract,
-        selectedIssueIdentifier: String?
+        selectedIssueIdentifier: String?,
+        mutationErrorMessage: String? = nil,
+        updatingIssueIdentifier: String? = nil
     ) -> SymphonyIssueCatalogViewModel {
         return SymphonyIssueCatalogViewModel(
             displayMode: displayMode,
@@ -21,26 +23,34 @@ public struct SymphonyIssueCatalogPresenter {
             ),
             boardViewModel: makeBoardViewModel(
                 from: collection,
-                displayMode: displayMode
+                displayMode: displayMode,
+                updatingIssueIdentifier: updatingIssueIdentifier
             ),
             listViewModel: makeListViewModel(
                 from: collection,
                 displayMode: displayMode,
-                selectedIssueIdentifier: selectedIssueIdentifier
+                selectedIssueIdentifier: selectedIssueIdentifier,
+                updatingIssueIdentifier: updatingIssueIdentifier
             ),
             activeBindingCount: collection.activeBindingCount,
             loadedBindingCount: collection.loadedBindingCount,
-            failedBindingCount: collection.failedBindingCount
+            failedBindingCount: collection.failedBindingCount,
+            mutationErrorMessage: mutationErrorMessage,
+            updatingIssueIdentifier: updatingIssueIdentifier
         )
     }
 
     private func makeBoardViewModel(
         from collection: SymphonyIssueCollectionContract,
-        displayMode: SymphonyIssueCatalogDisplayModeContract
+        displayMode: SymphonyIssueCatalogDisplayModeContract,
+        updatingIssueIdentifier: String?
     ) -> SymphonyKanbanBoardViewModel {
         guard displayMode == .groupedSections,
               collection.bindingResults.isEmpty == false else {
-            return makeMergedBoardViewModel(from: collection)
+            return makeMergedBoardViewModel(
+                from: collection,
+                updatingIssueIdentifier: updatingIssueIdentifier
+            )
         }
 
         return SymphonyKanbanBoardViewModel(
@@ -52,7 +62,8 @@ public struct SymphonyIssueCatalogPresenter {
                     errorMessage: bindingResult.loadError.map(errorMessage(for:)),
                     columns: makeColumns(
                         from: boardOrderedIssues(bindingResult.issues),
-                        scopeName: bindingResult.bindingContext.workspaceBinding.scopeName
+                        scopeName: bindingResult.bindingContext.workspaceBinding.scopeName,
+                        updatingIssueIdentifier: updatingIssueIdentifier
                     )
                 )
             }
@@ -60,13 +71,15 @@ public struct SymphonyIssueCatalogPresenter {
     }
 
     private func makeMergedBoardViewModel(
-        from collection: SymphonyIssueCollectionContract
+        from collection: SymphonyIssueCollectionContract,
+        updatingIssueIdentifier: String?
     ) -> SymphonyKanbanBoardViewModel {
         if collection.bindingResults.isEmpty {
             return SymphonyKanbanBoardViewModel(
                 columns: makeColumns(
                     from: boardOrderedIssues(collection.issues),
-                    scopeName: nil
+                    scopeName: nil,
+                    updatingIssueIdentifier: updatingIssueIdentifier
                 )
             )
         }
@@ -79,35 +92,37 @@ public struct SymphonyIssueCatalogPresenter {
 
         return SymphonyKanbanBoardViewModel(
             columns: [
-                makeColumn(id: "backlog", title: "Backlog", entries: grouped["backlog"] ?? []),
-                makeColumn(id: "ready", title: "Ready", entries: grouped["ready"] ?? []),
-                makeColumn(id: "in_progress", title: "In Progress", entries: grouped["in_progress"] ?? []),
-                makeColumn(id: "blocked", title: "Blocked", entries: grouped["blocked"] ?? []),
-                makeColumn(id: "review", title: "Review", entries: grouped["review"] ?? []),
-                makeColumn(id: "done", title: "Done", entries: grouped["done"] ?? [])
+                makeColumn(id: "backlog", title: "Backlog", entries: grouped["backlog"] ?? [], updatingIssueIdentifier: updatingIssueIdentifier),
+                makeColumn(id: "ready", title: "Ready", entries: grouped["ready"] ?? [], updatingIssueIdentifier: updatingIssueIdentifier),
+                makeColumn(id: "in_progress", title: "In Progress", entries: grouped["in_progress"] ?? [], updatingIssueIdentifier: updatingIssueIdentifier),
+                makeColumn(id: "blocked", title: "Blocked", entries: grouped["blocked"] ?? [], updatingIssueIdentifier: updatingIssueIdentifier),
+                makeColumn(id: "review", title: "Review", entries: grouped["review"] ?? [], updatingIssueIdentifier: updatingIssueIdentifier),
+                makeColumn(id: "done", title: "Done", entries: grouped["done"] ?? [], updatingIssueIdentifier: updatingIssueIdentifier)
             ]
         )
     }
 
     private func makeColumns(
         from issues: [SymphonyIssue],
-        scopeName: String?
+        scopeName: String?,
+        updatingIssueIdentifier: String?
     ) -> [SymphonyKanbanColumnViewModel] {
         let grouped = Dictionary(grouping: issues, by: statusKey(for:))
         return [
-            makeColumn(id: "backlog", title: "Backlog", issues: grouped["backlog"] ?? [], scopeName: scopeName),
-            makeColumn(id: "ready", title: "Ready", issues: grouped["ready"] ?? [], scopeName: scopeName),
-            makeColumn(id: "in_progress", title: "In Progress", issues: grouped["in_progress"] ?? [], scopeName: scopeName),
-            makeColumn(id: "blocked", title: "Blocked", issues: grouped["blocked"] ?? [], scopeName: scopeName),
-            makeColumn(id: "review", title: "Review", issues: grouped["review"] ?? [], scopeName: scopeName),
-            makeColumn(id: "done", title: "Done", issues: grouped["done"] ?? [], scopeName: scopeName)
+            makeColumn(id: "backlog", title: "Backlog", issues: grouped["backlog"] ?? [], scopeName: scopeName, updatingIssueIdentifier: updatingIssueIdentifier),
+            makeColumn(id: "ready", title: "Ready", issues: grouped["ready"] ?? [], scopeName: scopeName, updatingIssueIdentifier: updatingIssueIdentifier),
+            makeColumn(id: "in_progress", title: "In Progress", issues: grouped["in_progress"] ?? [], scopeName: scopeName, updatingIssueIdentifier: updatingIssueIdentifier),
+            makeColumn(id: "blocked", title: "Blocked", issues: grouped["blocked"] ?? [], scopeName: scopeName, updatingIssueIdentifier: updatingIssueIdentifier),
+            makeColumn(id: "review", title: "Review", issues: grouped["review"] ?? [], scopeName: scopeName, updatingIssueIdentifier: updatingIssueIdentifier),
+            makeColumn(id: "done", title: "Done", issues: grouped["done"] ?? [], scopeName: scopeName, updatingIssueIdentifier: updatingIssueIdentifier)
         ]
     }
 
     private func makeColumn(
         id: String,
         title: String,
-        entries: [(issue: SymphonyIssue, scopeName: String?)]
+        entries: [(issue: SymphonyIssue, scopeName: String?)],
+        updatingIssueIdentifier: String?
     ) -> SymphonyKanbanColumnViewModel {
         SymphonyKanbanColumnViewModel(
             id: id,
@@ -122,7 +137,9 @@ public struct SymphonyIssueCatalogPresenter {
                     priorityLevel: entry.issue.priority ?? 0,
                     statusKey: id,
                     statusLabel: title,
-                    labels: entry.issue.labels
+                    labels: entry.issue.labels,
+                    canCancel: canCancel(issue: entry.issue),
+                    isUpdating: entry.issue.identifier == updatingIssueIdentifier
                 )
             }
         )
@@ -132,7 +149,8 @@ public struct SymphonyIssueCatalogPresenter {
         id: String,
         title: String,
         issues: [SymphonyIssue],
-        scopeName: String?
+        scopeName: String?,
+        updatingIssueIdentifier: String?
     ) -> SymphonyKanbanColumnViewModel {
         SymphonyKanbanColumnViewModel(
             id: id,
@@ -147,7 +165,9 @@ public struct SymphonyIssueCatalogPresenter {
                     priorityLevel: issue.priority ?? 0,
                     statusKey: id,
                     statusLabel: title,
-                    labels: issue.labels
+                    labels: issue.labels,
+                    canCancel: canCancel(issue: issue),
+                    isUpdating: issue.identifier == updatingIssueIdentifier
                 )
             }
         )
@@ -156,13 +176,15 @@ public struct SymphonyIssueCatalogPresenter {
     private func makeListViewModel(
         from collection: SymphonyIssueCollectionContract,
         displayMode: SymphonyIssueCatalogDisplayModeContract,
-        selectedIssueIdentifier: String?
+        selectedIssueIdentifier: String?,
+        updatingIssueIdentifier: String?
     ) -> SymphonyIssueListViewModel {
         guard displayMode == .groupedSections,
               collection.bindingResults.isEmpty == false else {
             return makeMergedListViewModel(
                 from: collection,
-                selectedIssueIdentifier: selectedIssueIdentifier
+                selectedIssueIdentifier: selectedIssueIdentifier,
+                updatingIssueIdentifier: updatingIssueIdentifier
             )
         }
 
@@ -176,7 +198,8 @@ public struct SymphonyIssueCatalogPresenter {
                     rows: makeRows(
                         from: listOrderedIssues(bindingResult.issues),
                         scopeName: bindingResult.bindingContext.workspaceBinding.scopeName,
-                        selectedIssueIdentifier: selectedIssueIdentifier
+                        selectedIssueIdentifier: selectedIssueIdentifier,
+                        updatingIssueIdentifier: updatingIssueIdentifier
                     )
                 )
             }
@@ -185,14 +208,16 @@ public struct SymphonyIssueCatalogPresenter {
 
     private func makeMergedListViewModel(
         from collection: SymphonyIssueCollectionContract,
-        selectedIssueIdentifier: String?
+        selectedIssueIdentifier: String?,
+        updatingIssueIdentifier: String?
     ) -> SymphonyIssueListViewModel {
         if collection.bindingResults.isEmpty {
             return SymphonyIssueListViewModel(
                 rows: makeRows(
                     from: listOrderedIssues(collection.issues),
                     scopeName: nil,
-                    selectedIssueIdentifier: selectedIssueIdentifier
+                    selectedIssueIdentifier: selectedIssueIdentifier,
+                    updatingIssueIdentifier: updatingIssueIdentifier
                 )
             )
         }
@@ -216,7 +241,9 @@ public struct SymphonyIssueCatalogPresenter {
                     lastEvent: nil,
                     lastEventTime: nil,
                     tokenCount: nil,
-                    isSelected: entry.issue.identifier == selectedIssueIdentifier
+                    isSelected: entry.issue.identifier == selectedIssueIdentifier,
+                    canCancel: canCancel(issue: entry.issue),
+                    isUpdating: entry.issue.identifier == updatingIssueIdentifier
                 )
             }
         )
@@ -225,7 +252,8 @@ public struct SymphonyIssueCatalogPresenter {
     private func makeRows(
         from issues: [SymphonyIssue],
         scopeName: String?,
-        selectedIssueIdentifier: String?
+        selectedIssueIdentifier: String?,
+        updatingIssueIdentifier: String?
     ) -> [SymphonyIssueListRowViewModel] {
         issues.map { issue in
             let key = statusKey(for: issue)
@@ -242,7 +270,9 @@ public struct SymphonyIssueCatalogPresenter {
                 lastEvent: nil,
                 lastEventTime: nil,
                 tokenCount: nil,
-                isSelected: issue.identifier == selectedIssueIdentifier
+                isSelected: issue.identifier == selectedIssueIdentifier,
+                canCancel: canCancel(issue: issue),
+                isUpdating: issue.identifier == updatingIssueIdentifier
             )
         }
     }
@@ -315,6 +345,8 @@ public struct SymphonyIssueCatalogPresenter {
             priority: nil,
             state: issue.state,
             stateType: issue.stateType,
+            currentStateID: issue.currentStateID,
+            teamID: issue.teamID,
             branchName: issue.branchName,
             url: issue.url,
             labels: issue.labels,
@@ -407,5 +439,16 @@ public struct SymphonyIssueCatalogPresenter {
             .lowercased()
             .replacingOccurrences(of: "-", with: "_")
             .replacingOccurrences(of: " ", with: "_")
+    }
+
+    private func canCancel(issue: SymphonyIssue) -> Bool {
+        let normalizedState = normalizeStatusKey(issue.state)
+        let normalizedStateType = normalizeStatusKey(issue.stateType)
+
+        return normalizedState.contains("done") == false
+            && normalizedState.contains("complete") == false
+            && normalizedState.contains("cancel") == false
+            && normalizedStateType.contains("complete") == false
+            && normalizedStateType.contains("cancel") == false
     }
 }

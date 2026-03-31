@@ -6,6 +6,8 @@ public struct SymphonyIssueCatalogViewModel: Equatable, Sendable {
     public let activeBindingCount: Int
     public let loadedBindingCount: Int
     public let failedBindingCount: Int
+    public let mutationErrorMessage: String?
+    public let updatingIssueIdentifier: String?
 
     public init(
         displayMode: SymphonyIssueCatalogDisplayModeContract,
@@ -14,7 +16,9 @@ public struct SymphonyIssueCatalogViewModel: Equatable, Sendable {
         listViewModel: SymphonyIssueListViewModel,
         activeBindingCount: Int,
         loadedBindingCount: Int,
-        failedBindingCount: Int
+        failedBindingCount: Int,
+        mutationErrorMessage: String? = nil,
+        updatingIssueIdentifier: String? = nil
     ) {
         self.displayMode = displayMode
         self.issuesByIdentifier = issuesByIdentifier
@@ -23,5 +27,7 @@ public struct SymphonyIssueCatalogViewModel: Equatable, Sendable {
         self.activeBindingCount = activeBindingCount
         self.loadedBindingCount = loadedBindingCount
         self.failedBindingCount = failedBindingCount
+        self.mutationErrorMessage = mutationErrorMessage
+        self.updatingIssueIdentifier = updatingIssueIdentifier
     }
 }

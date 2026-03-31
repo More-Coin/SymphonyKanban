@@ -15,7 +15,13 @@ public struct FileClassification: Sendable, Equatable {
     public var isTestFile: Bool { layer == .tests }
     public var testRootComponent: String? { pathComponents.first }
     public var isLegacyTestFile: Bool { testRootComponent == "Tests" }
-    public var isCanonicalRepoTestFile: Bool { testRootComponent == "SymphonyKanbanTests" }
+    public var isCanonicalRepoTestFile: Bool {
+        guard let root = testRootComponent else {
+            return false
+        }
+
+        return root != "Tests" && root.hasSuffix("Tests") && !root.hasSuffix("UITests")
+    }
     public var isUITestFile: Bool {
         if let root = testRootComponent {
             return root.hasSuffix("UITests")

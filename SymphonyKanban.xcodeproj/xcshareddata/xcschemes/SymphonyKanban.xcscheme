@@ -80,6 +80,11 @@
             value = "0196329ca0521973565d93c5568bdcc3"
             isEnabled = "YES">
          </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "LINEAR_OAUTH_SCOPES"
+            value = "read,write"
+            isEnabled = "YES">
+         </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction

@@ -12,6 +12,7 @@ public struct SymphonyContentRouterView: View {
     let failedBindingCount: Int
     let activeBindingCount: Int
     let onCardSelected: (String) -> Void
+    let onCancelIssue: (String) -> Void
     let onRefreshTapped: () -> Void
     let onDismissInspector: () -> Void
     let onBannerTapped: () -> Void
@@ -28,6 +29,7 @@ public struct SymphonyContentRouterView: View {
         failedBindingCount: Int = 0,
         activeBindingCount: Int = 0,
         onCardSelected: @escaping (String) -> Void,
+        onCancelIssue: @escaping (String) -> Void = { _ in },
         onRefreshTapped: @escaping () -> Void,
         onDismissInspector: @escaping () -> Void = {},
         onBannerTapped: @escaping () -> Void = {}
@@ -40,6 +42,7 @@ public struct SymphonyContentRouterView: View {
         self.failedBindingCount = failedBindingCount
         self.activeBindingCount = activeBindingCount
         self.onCardSelected = onCardSelected
+        self.onCancelIssue = onCancelIssue
         self.onRefreshTapped = onRefreshTapped
         self.onDismissInspector = onDismissInspector
         self.onBannerTapped = onBannerTapped
@@ -73,6 +76,7 @@ public struct SymphonyContentRouterView: View {
                     SymphonyKanbanBoardView(
                         viewModel: boardViewModel,
                         onCardSelected: onCardSelected,
+                        onCancelIssue: onCancelIssue,
                         onBackgroundTapped: onDismissInspector
                     )
                     .transition(.opacity.combined(with: .move(edge: .bottom)))

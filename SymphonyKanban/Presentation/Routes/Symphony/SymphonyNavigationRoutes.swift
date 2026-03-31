@@ -93,11 +93,12 @@ public struct SymphonyNavigationRoutes: View {
                 selectedTab: selectedTab,
                 boardViewModel: issueCatalogViewModel?.boardViewModel ?? SymphonyPreviewDI.makeBoardViewModel(),
                 issueListViewModel: issueCatalogViewModel?.listViewModel ?? SymphonyPreviewDI.makeIssueListViewModel(),
-                issueBannerMessage: issueLoadErrorMessage,
+                issueBannerMessage: issueLoadErrorMessage ?? issueCatalogViewModel?.mutationErrorMessage,
                 isRefreshing: isRefreshing,
                 failedBindingCount: failedBindingCount,
                 activeBindingCount: activeBindingCount,
                 onCardSelected: handleIssueSelected,
+                onCancelIssue: handleCancelIssue,
                 onRefreshTapped: handleRefresh,
                 onDismissInspector: handleDismissInspector,
                 onBannerTapped: handleSettingsTapped
@@ -217,6 +218,24 @@ public struct SymphonyNavigationRoutes: View {
         withAnimation(SymphonyDesignStyle.Motion.snappy) {
             selectedIssueIdentifier = issueIdentifier
             showInspector = true
+        }
+    }
+
+    private func handleCancelIssue(_ issueIdentifier: String) {
+        Task {
+            do {
+                issueCatalogViewModel = try await issueCatalogController.updatingIssueViewModel(
+                    issueIdentifier: issueIdentifier,
+                    selectedIssueIdentifier: selectedIssueIdentifier
+                )
+
+                issueCatalogViewModel = try await issueCatalogController.cancelIssueViewModel(
+                    issueIdentifier: issueIdentifier,
+                    selectedIssueIdentifier: selectedIssueIdentifier
+                )
+            } catch {
+                issueLoadErrorMessage = structuredMessage(for: error)
+            }
         }
     }
 

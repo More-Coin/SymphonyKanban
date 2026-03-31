@@ -5,6 +5,8 @@ struct LinearIssueTrackerResponseModel: Decodable {
         let issues: IssueConnectionModel?
         let teams: LinearTeamConnectionModel?
         let projects: LinearProjectConnectionModel?
+        let team: LinearTeamDetailModel?
+        let issueUpdate: LinearIssueUpdatePayloadModel?
     }
 
     struct GraphQLErrorModel: Decodable {
@@ -101,6 +103,7 @@ struct LinearIssueNodeModel: Decodable {
     let description: String?
     let priority: LinearPriorityValueModel?
     let state: LinearIssueStateModel?
+    let team: LinearIssueTeamReferenceModel?
     let branchName: String?
     let url: String?
     let labels: LinearLabelConnectionModel?
@@ -127,6 +130,8 @@ struct LinearIssueNodeModel: Decodable {
             priority: priority?.integerValue,
             state: state,
             stateType: stateType,
+            currentStateID: normalizedOptional(self.state?.id),
+            teamID: normalizedOptional(team?.id),
             branchName: normalizedOptional(branchName),
             url: normalizedOptional(url),
             labels: (labels?.nodes ?? []).compactMap { normalizedOptional($0.name) },
@@ -147,8 +152,53 @@ struct LinearPriorityValueModel: Decodable {
 }
 
 struct LinearIssueStateModel: Decodable {
+    let id: String?
     let name: String?
     let type: String?
+}
+
+struct LinearIssueTeamReferenceModel: Decodable {
+    let id: String?
+}
+
+struct LinearTeamDetailModel: Decodable {
+    let id: String?
+    let states: LinearWorkflowStateConnectionModel?
+}
+
+struct LinearWorkflowStateConnectionModel: Decodable {
+    let nodes: [LinearWorkflowStateNodeModel]?
+}
+
+struct LinearWorkflowStateNodeModel: Decodable {
+    let id: String?
+    let name: String?
+    let type: String?
+    let position: LinearNumericValueModel?
+}
+
+struct LinearIssueUpdatePayloadModel: Decodable {
+    let success: Bool?
+    let issue: LinearIssueNodeModel?
+}
+
+struct LinearNumericValueModel: Decodable {
+    let doubleValue: Double?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let value = try? container.decode(Double.self) {
+            doubleValue = value
+            return
+        }
+
+        if let value = try? container.decode(Int.self) {
+            doubleValue = Double(value)
+            return
+        }
+
+        doubleValue = nil
+    }
 }
 
 struct LinearLabelConnectionModel: Decodable {

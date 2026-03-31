@@ -22,16 +22,16 @@ public struct TestsSwiftPMTargetRootPolicy: ArchitecturePolicyProtocol {
                     categories: [
                         "legacy SwiftPM test target path",
                         "partial migration where canonical repo test folders exist but Package.swift still points at Tests/",
-                        "diagnostics or runtime target path rooted outside SymphonyKanbanTests/"
+                        "diagnostics or runtime target path rooted outside the canonical <ProjectName>Tests/ tree"
                     ],
                     signs: [
                         "Package.swift contains a test-target path string literal beginning with Tests/",
-                        "runtime suites are still discovered from Tests/... instead of SymphonyKanbanTests/...",
-                        "diagnostics suites are not rooted under SymphonyKanbanTests/Diagnostics/KanbanArchitectureLinter/."
+                        "runtime suites are still discovered from Tests/... instead of a canonical test root whose folder name ends in Tests",
+                        "diagnostics suites are not rooted under \(diagnosticsCanonicalPrefix())."
                     ],
-                    architecturalNote: "SwiftPM remains the active source of truth for test discovery in this repository, but all active test targets must converge on the canonical SymphonyKanbanTests/ root so lint, CI, and agent-driven remediation all describe the same filesystem layout.",
-                    destination: "rewrite Package.swift testTarget paths to SymphonyKanbanTests/Application|Infrastructure|Domain|Presentation|App/Symphony/... for runtime coverage and SymphonyKanbanTests/Diagnostics/KanbanArchitectureLinter/... for architecture-linter coverage.",
-                    decomposition: "first move runtime suites into the canonical layer buckets under SymphonyKanbanTests/, then move diagnostics suites under SymphonyKanbanTests/Diagnostics/KanbanArchitectureLinter/, and finally repoint every SwiftPM testTarget path away from Tests/."
+                    architecturalNote: "SwiftPM remains the active source of truth for test discovery in this repository, but all active test targets must converge on one canonical repo test root whose folder name ends in Tests so lint, CI, and agent-driven remediation all describe the same filesystem layout.",
+                    destination: "rewrite Package.swift testTarget paths to \(runtimeBucketDestinationSummary()) for runtime coverage and \(diagnosticsCanonicalPrefix()) for architecture-linter coverage.",
+                    decomposition: "first move runtime suites into the canonical layer buckets under the repo test root ending in Tests, then move diagnostics suites under \(diagnosticsCanonicalPrefix()), and finally repoint every SwiftPM testTarget path away from Tests/."
                 ),
                 coordinate: occurrence.coordinate
             )
@@ -65,11 +65,11 @@ public struct TestsLegacyRootPolicy: ArchitecturePolicyProtocol {
                     signs: [
                         "repo-relative path begins with Tests/",
                         "the file still declares a primary test suite or test-bearing type",
-                        "the canonical SymphonyKanbanTests/ root is not yet the only active location."
+                        "the canonical repo test root ending in Tests is not yet the only active location."
                     ],
                     architecturalNote: "The repo should have exactly one active filesystem root for tests. Leaving active suites under Tests/ creates split ownership, weakens lint guidance, and makes migration harder for both humans and agents.",
                     destination: legacyDestinationGuidance(for: file),
-                    decomposition: "move the suite into its canonical layered bucket under SymphonyKanbanTests/, move reusable spies, builders, and temp-workspace support into SymphonyKanbanTests/TestDoubles/Symphony/ when needed, then repoint Package.swift so the legacy Tests/ root becomes empty."
+                    decomposition: "move the suite into its canonical layered bucket under the repo test root ending in Tests, move reusable spies, builders, and temp-workspace support into \(testDoublesCanonicalPrefix(for: file)) when needed, then repoint Package.swift so the legacy Tests/ root becomes empty."
                 ),
                 coordinate: declaration.coordinate
             )
@@ -92,7 +92,7 @@ public struct TestsRuntimeLayeredLocationPolicy: ArchitecturePolicyProtocol {
             return []
         }
 
-        let expectedPrefix = bucket.canonicalPrefix
+        let expectedPrefix = bucket.canonicalPrefix(testRootName: canonicalTestRootName(for: file))
         guard !file.repoRelativePath.hasPrefix(expectedPrefix) else {
             return []
         }
@@ -133,7 +133,7 @@ public struct TestsDiagnosticsLocationPolicy: ArchitecturePolicyProtocol {
             return []
         }
 
-        let expectedPrefix = "SymphonyKanbanTests/Diagnostics/KanbanArchitectureLinter/"
+        let expectedPrefix = diagnosticsCanonicalPrefix(for: file)
         guard !file.repoRelativePath.hasPrefix(expectedPrefix) else {
             return []
         }
@@ -156,7 +156,7 @@ public struct TestsDiagnosticsLocationPolicy: ArchitecturePolicyProtocol {
                     ],
                     architecturalNote: "Architecture-linter tests are diagnostics coverage, not runtime feature tests. They should live under a dedicated Diagnostics root so agents can distinguish structural lint coverage from Symphony runtime coverage.",
                     destination: "move diagnostics suites under \(expectedPrefix).",
-                    decomposition: "split diagnostics coverage by rule family under SymphonyKanbanTests/Diagnostics/KanbanArchitectureLinter/, keep reusable harness code in a Support subtree under that diagnostics root, and keep runtime suites out of Diagnostics entirely."
+                    decomposition: "split diagnostics coverage by rule family under \(expectedPrefix), keep reusable harness code in a Support subtree under that diagnostics root, and keep runtime suites out of Diagnostics entirely."
                 ),
                 coordinate: declaration?.coordinate
             )
@@ -200,10 +200,10 @@ public struct TestsSharedSupportPlacementPolicy: ArchitecturePolicyProtocol {
                     signs: [
                         "the file declares support-shaped types such as Spy, Fake, Builder, Recorder, Environment, or Transport, or it carries multiple private helper builders",
                         "the suite mixes scenario assertions with reusable support infrastructure",
-                        "the support does not live under SymphonyKanbanTests/TestDoubles/Symphony/."
+                        "the support does not live under \(testDoublesCanonicalPrefix(for: file))."
                     ],
                     architecturalNote: "Large runtime suites become hard to decompose when support infrastructure stays embedded. Shared or reusable test support should live in the dedicated TestDoubles tree so scenario suites can stay focused on one responsibility family.",
-                    destination: "move reusable support to SymphonyKanbanTests/TestDoubles/Symphony/ and keep only scenario-specific assertions in the active suite file.",
+                    destination: "move reusable support to \(testDoublesCanonicalPrefix(for: file)) and keep only scenario-specific assertions in the active suite file.",
                     decomposition: "extract spies, fakes, builders, fake transports, fixture builders, and temp-workspace helpers to TestDoubles first; then trim the suite down to the specific scenarios that still need to stay together."
                 ),
                 coordinate: firstCoordinate
@@ -244,7 +244,7 @@ public struct TestsMegaArchitectureLinterSuitePolicy: ArchitecturePolicyProtocol
                         "support collectors or harness helpers are still colocated with the main diagnostics scenarios."
                     ],
                     architecturalNote: "Diagnostics suites should be split by rule family so failures point directly at the owning architectural area and so agents can remediate one family at a time.",
-                    destination: "split diagnostics coverage under SymphonyKanbanTests/Diagnostics/KanbanArchitectureLinter/ into Domain, ApplicationContracts, ApplicationServicesUseCases, Infrastructure, PresentationApp, and Support or Harness files.",
+                    destination: "split diagnostics coverage under \(diagnosticsCanonicalPrefix(for: file)) into Domain, ApplicationContracts, ApplicationServicesUseCases, Infrastructure, PresentationApp, and Support or Harness files.",
                     decomposition: "first extract reusable lint harness and syntax collectors to a Support subtree, then split rule-family scenarios into separate diagnostics files, and finally remove the single ArchitectureLinterTests mega-suite entry point."
                 ),
                 coordinate: declaration?.coordinate
@@ -270,7 +270,8 @@ public struct TestsMixedResponsibilityRuntimeSuitePolicy: ArchitecturePolicyProt
 
         let declaration = primaryTestSuite(in: file)
         let renderedFamilies = families.map(\.displayName).joined(separator: ", ")
-        let destinations = families.map(\.canonicalPrefix).joined(separator: ", ")
+        let testRootName = canonicalTestRootName(for: file)
+        let destinations = families.map { $0.canonicalPrefix(testRootName: testRootName) }.joined(separator: ", ")
 
         return [
             file.diagnostic(
@@ -323,12 +324,12 @@ public struct TestsTestDoublesOnlySupportPolicy: ArchitecturePolicyProtocol {
                         "test-support boundary violation"
                     ],
                     signs: [
-                        "the file lives under SymphonyKanbanTests/TestDoubles/...",
+                        "the file lives under \(canonicalTestRootName(for: file))/TestDoubles/...",
                         "it still exposes a top-level declaration ending in Tests",
                         "the file is carrying active scenarios instead of pure reusable support."
                     ],
                     architecturalNote: "TestDoubles is the ownership home for reusable support only. Scenario suites should stay in their layer-aligned directories, while TestDoubles stays reserved for spies, fakes, builders, fixtures, and temp-workspace helpers.",
-                    destination: "move the active suite out of TestDoubles and leave only support types in SymphonyKanbanTests/TestDoubles/...",
+                    destination: "move the active suite out of TestDoubles and leave only support types in \(canonicalTestRootName(for: file))/TestDoubles/...",
                     decomposition: "extract any reusable support from the suite, keep that support in TestDoubles, then move the scenario file into its layer-aligned Application, Infrastructure, Domain, Presentation, App, or Diagnostics location."
                 ),
                 coordinate: suiteDeclaration.coordinate
@@ -371,7 +372,7 @@ public struct TestsImportOwnershipPolicy: ArchitecturePolicyProtocol {
                             "the suite is not isolated to KanbanArchitectureLinter diagnostics ownership."
                         ],
                         architecturalNote: "Diagnostics suites should stay focused on linter behavior and should not accrete runtime module dependencies unless the suite has been misclassified and should move out of Diagnostics.",
-                        destination: "keep diagnostics suites limited to KanbanArchitectureLinter-related imports and move runtime scenarios to SymphonyKanbanTests/Application|Infrastructure|Domain|Presentation|App/Symphony/... instead.",
+                        destination: "keep diagnostics suites limited to KanbanArchitectureLinter-related imports and move runtime scenarios to \(runtimeBucketDestinationSummary(for: file)) instead.",
                         decomposition: "separate runtime scenarios from diagnostics assertions first, move the runtime scenarios to their layer-aligned buckets, and leave only diagnostics-focused imports in the Diagnostics tree."
                     ),
                     coordinate: occurrence.coordinate
@@ -397,7 +398,7 @@ public struct TestsImportOwnershipPolicy: ArchitecturePolicyProtocol {
                             "the suite likely belongs in Diagnostics or needs to be split."
                         ],
                         architecturalNote: "Runtime suites should depend on runtime modules only. Diagnostics dependencies inside a runtime suite are a signal that diagnostics coverage has leaked out of the dedicated Diagnostics tree.",
-                        destination: "move diagnostics-focused assertions to SymphonyKanbanTests/Diagnostics/KanbanArchitectureLinter/... and keep runtime suites limited to their needed Symphony modules.",
+                        destination: "move diagnostics-focused assertions to \(diagnosticsCanonicalPrefix(for: file)) and keep runtime suites limited to their needed Symphony modules.",
                         decomposition: "extract diagnostics-specific assertions into dedicated Diagnostics files, remove parser or linter imports from the runtime suite, and keep only the runtime-target imports the scenario actually exercises."
                     ),
                     coordinate: occurrence.coordinate
@@ -406,7 +407,7 @@ public struct TestsImportOwnershipPolicy: ArchitecturePolicyProtocol {
         }
 
         if isRuntimeTestFile(file),
-           !file.repoRelativePath.hasPrefix("SymphonyKanbanTests/App/"),
+           !file.repoRelativePath.hasPrefix(appBucketPrefix(for: file)),
            modules.contains("SymphonyRuntime"),
            modules.contains("SymphonyCLI"),
            let occurrence = file.imports.first(where: { $0.moduleName == "SymphonyCLI" }) {
@@ -426,7 +427,7 @@ public struct TestsImportOwnershipPolicy: ArchitecturePolicyProtocol {
                             "the file cannot stay in one non-App canonical bucket without splitting."
                         ],
                         architecturalNote: "Non-App runtime suites should generally test one layer-facing surface. Pulling in SymphonyCLI alongside SymphonyRuntime usually means the suite mixes bootstrap or command-surface behavior with lower-level runtime responsibilities.",
-                        destination: "move bootstrap or command-surface scenarios to SymphonyKanbanTests/App/Symphony/... and leave lower-level runtime scenarios in their Application, Infrastructure, Domain, or Presentation bucket.",
+                        destination: "move bootstrap or command-surface scenarios to \(appBucketPrefix(for: file)) and leave lower-level runtime scenarios in their Application, Infrastructure, Domain, or Presentation bucket.",
                         decomposition: "separate App-facing CLI or bootstrap scenarios first, move them to the App test bucket, then leave the remaining runtime scenarios with only the lower-level SymphonyRuntime dependency."
                     ),
                     coordinate: occurrence.coordinate
@@ -476,7 +477,7 @@ public struct TestsLinterHarnessExtractionPolicy: ArchitecturePolicyProtocol {
                         "the suite cannot be cleanly split by rule family while support stays embedded."
                     ],
                     architecturalNote: "Diagnostics suites should not own their shared harness. Extracted harness support makes rule-family files smaller and keeps diagnostics failures focused on architecture behavior instead of parser plumbing.",
-                    destination: "move reusable lint harness code to SymphonyKanbanTests/Diagnostics/KanbanArchitectureLinter/Support/ and keep rule-family scenarios in separate diagnostics files.",
+                    destination: "move reusable lint harness code to \(diagnosticsSupportPrefix(for: file)) and keep rule-family scenarios in separate diagnostics files.",
                     decomposition: "extract repo-fixture builders and lint helpers first, extract syntax collectors and reusable analyzer support next, then split the remaining diagnostics scenarios by rule family."
                 ),
                 coordinate: coordinate
@@ -492,8 +493,8 @@ private enum RuntimeTestBucket: String, CaseIterable {
     case presentation = "Presentation"
     case app = "App"
 
-    var canonicalPrefix: String {
-        "SymphonyKanbanTests/\(rawValue)/Symphony/"
+    func canonicalPrefix(testRootName: String) -> String {
+        "\(testRootName)/\(rawValue)/Symphony/"
     }
 
     var signDescription: String {
@@ -557,18 +558,18 @@ private enum RuntimeResponsibilityFamily: CaseIterable {
         }
     }
 
-    var canonicalPrefix: String {
+    func canonicalPrefix(testRootName: String) -> String {
         switch self {
         case .application:
-            return RuntimeTestBucket.application.canonicalPrefix
+            return RuntimeTestBucket.application.canonicalPrefix(testRootName: testRootName)
         case .infrastructure:
-            return RuntimeTestBucket.infrastructure.canonicalPrefix
+            return RuntimeTestBucket.infrastructure.canonicalPrefix(testRootName: testRootName)
         case .domain:
-            return RuntimeTestBucket.domain.canonicalPrefix
+            return RuntimeTestBucket.domain.canonicalPrefix(testRootName: testRootName)
         case .presentation:
-            return RuntimeTestBucket.presentation.canonicalPrefix
+            return RuntimeTestBucket.presentation.canonicalPrefix(testRootName: testRootName)
         case .app:
-            return RuntimeTestBucket.app.canonicalPrefix
+            return RuntimeTestBucket.app.canonicalPrefix(testRootName: testRootName)
         }
     }
 }
@@ -640,15 +641,49 @@ private func isTestDoublesFile(_ file: ArchitectureFile) -> Bool {
 
 private func legacyDestinationGuidance(for file: ArchitectureFile) -> String {
     if isDiagnosticsTestFile(file) {
-        return "move diagnostics suites under SymphonyKanbanTests/Diagnostics/KanbanArchitectureLinter/."
+        return "move diagnostics suites under \(diagnosticsCanonicalPrefix(for: file))."
     }
 
     let inferred = inferredRuntimeBuckets(for: file)
     guard inferred.count == 1, let bucket = inferred.first else {
-        return "move runtime suites under SymphonyKanbanTests/Application|Infrastructure|Domain|Presentation|App/Symphony/... based on the owning responsibility family."
+        return "move runtime suites under \(runtimeBucketDestinationSummary(for: file)) based on the owning responsibility family."
     }
 
-    return "move the suite under \(bucket.canonicalPrefix)."
+    return "move the suite under \(bucket.canonicalPrefix(testRootName: canonicalTestRootName(for: file)))."
+}
+
+private let canonicalTestRootPlaceholder = "<ProjectName>Tests"
+
+private func canonicalTestRootName(for file: ArchitectureFile? = nil) -> String {
+    guard let root = file?.classification.testRootComponent,
+          root != "Tests",
+          root.hasSuffix("Tests"),
+          !root.hasSuffix("UITests") else {
+        return canonicalTestRootPlaceholder
+    }
+
+    return root
+}
+
+private func diagnosticsCanonicalPrefix(for file: ArchitectureFile? = nil) -> String {
+    "\(canonicalTestRootName(for: file))/Diagnostics/KanbanArchitectureLinter/"
+}
+
+private func diagnosticsSupportPrefix(for file: ArchitectureFile? = nil) -> String {
+    "\(diagnosticsCanonicalPrefix(for: file))Support/"
+}
+
+private func testDoublesCanonicalPrefix(for file: ArchitectureFile? = nil) -> String {
+    "\(canonicalTestRootName(for: file))/TestDoubles/Symphony/"
+}
+
+private func appBucketPrefix(for file: ArchitectureFile? = nil) -> String {
+    RuntimeTestBucket.app.canonicalPrefix(testRootName: canonicalTestRootName(for: file))
+}
+
+private func runtimeBucketDestinationSummary(for file: ArchitectureFile? = nil) -> String {
+    let testRootName = canonicalTestRootName(for: file)
+    return "\(testRootName)/Application|Infrastructure|Domain|Presentation|App/Symphony/..."
 }
 
 private func inferredRuntimeBuckets(for file: ArchitectureFile) -> [RuntimeTestBucket] {

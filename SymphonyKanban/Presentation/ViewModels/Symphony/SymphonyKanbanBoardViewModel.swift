@@ -87,6 +87,8 @@ public struct SymphonyKanbanCardViewModel: Equatable, Sendable, Identifiable {
     public let lastEvent: String?
     public let lastEventTime: String?
     public let isRunning: Bool
+    public let canCancel: Bool
+    public let isUpdating: Bool
 
     public init(
         id: String,
@@ -101,7 +103,9 @@ public struct SymphonyKanbanCardViewModel: Equatable, Sendable, Identifiable {
         tokenCount: String? = nil,
         lastEvent: String? = nil,
         lastEventTime: String? = nil,
-        isRunning: Bool = false
+        isRunning: Bool = false,
+        canCancel: Bool = false,
+        isUpdating: Bool = false
     ) {
         self.id = id
         self.identifier = identifier
@@ -116,5 +120,7 @@ public struct SymphonyKanbanCardViewModel: Equatable, Sendable, Identifiable {
         self.lastEvent = lastEvent
         self.lastEventTime = lastEventTime
         self.isRunning = isRunning
+        self.canCancel = canCancel
+        self.isUpdating = isUpdating
     }
 }

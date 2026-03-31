@@ -265,9 +265,17 @@ public enum SymphonyUIDI {
             startupService: makeStartupService(
                 environment: environment
             ),
-            issueCatalogService: SymphonyIssueCatalogService(
+            issueCatalogWorkflowService: SymphonyIssueCatalogWorkflowService(
                 fetchIssuesUseCase: FetchSymphonyIssuesUseCase(
                     issueTrackerReadPort: SymphonyFallbackIssueTrackerPortAdapter(
+                        trackerAuthPort: trackerAuthPortAdapter,
+                        liveGateway: SymphonyLinearIssueTrackerGateway(
+                            environment: environment
+                        )
+                    )
+                ),
+                updateIssueUseCase: UpdateSymphonyIssueUseCase(
+                    issueTrackerPort: SymphonyFallbackIssueTrackerPortAdapter(
                         trackerAuthPort: trackerAuthPortAdapter,
                         liveGateway: SymphonyLinearIssueTrackerGateway(
                             environment: environment

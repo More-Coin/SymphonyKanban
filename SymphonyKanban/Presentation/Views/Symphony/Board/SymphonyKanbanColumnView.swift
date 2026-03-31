@@ -9,6 +9,7 @@ public struct SymphonyKanbanColumnView: View {
     let viewModel: SymphonyKanbanColumnViewModel
     let isDropTarget: Bool
     let onCardSelected: (String) -> Void
+    let onCancelIssue: (String) -> Void
     let onDrop: ([SymphonyKanbanCardViewModel]) -> Void
 
     @State private var appeared = false
@@ -17,11 +18,13 @@ public struct SymphonyKanbanColumnView: View {
         viewModel: SymphonyKanbanColumnViewModel,
         isDropTarget: Bool = false,
         onCardSelected: @escaping (String) -> Void = { _ in },
+        onCancelIssue: @escaping (String) -> Void = { _ in },
         onDrop: @escaping ([SymphonyKanbanCardViewModel]) -> Void = { _ in }
     ) {
         self.viewModel = viewModel
         self.isDropTarget = isDropTarget
         self.onCardSelected = onCardSelected
+        self.onCancelIssue = onCancelIssue
         self.onDrop = onDrop
     }
 
@@ -80,9 +83,11 @@ public struct SymphonyKanbanColumnView: View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(spacing: SymphonyDesignStyle.Kanban.cardSpacing) {
                 ForEach(Array(viewModel.cards.enumerated()), id: \.element.id) { index, card in
-                    SymphonyKanbanCardView(viewModel: card) {
-                        onCardSelected(card.identifier)
-                    }
+                    SymphonyKanbanCardView(
+                        viewModel: card,
+                        onTap: { onCardSelected(card.identifier) },
+                        onCancelIssue: onCancelIssue
+                    )
                     .draggable(card.identifier)
                     .symphonyStaggerIn(index: index, isVisible: appeared)
                 }

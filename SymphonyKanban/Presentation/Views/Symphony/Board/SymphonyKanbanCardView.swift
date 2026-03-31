@@ -7,15 +7,18 @@ import SwiftUI
 public struct SymphonyKanbanCardView: View {
     let viewModel: SymphonyKanbanCardViewModel
     let onTap: () -> Void
+    let onCancelIssue: (String) -> Void
 
     @State private var isHovered = false
 
     public init(
         viewModel: SymphonyKanbanCardViewModel,
-        onTap: @escaping () -> Void = {}
+        onTap: @escaping () -> Void = {},
+        onCancelIssue: @escaping (String) -> Void = { _ in }
     ) {
         self.viewModel = viewModel
         self.onTap = onTap
+        self.onCancelIssue = onCancelIssue
     }
 
     public var body: some View {
@@ -41,7 +44,22 @@ public struct SymphonyKanbanCardView: View {
             .symphonyCard()
         }
         .buttonStyle(.plain)
-        .opacity(isHovered ? 0.97 : 1.0)
+        .contextMenu {
+            if viewModel.canCancel {
+                Button(role: .destructive) {
+                    onCancelIssue(viewModel.identifier)
+                } label: {
+                    Label("Cancel", systemImage: "xmark.circle")
+                }
+            }
+        }
+        .overlay {
+            if viewModel.isUpdating {
+                SymphonyKanbanCardUpdatingOverlayView()
+            }
+        }
+        .opacity(viewModel.isUpdating ? 0.6 : (isHovered ? 0.97 : 1.0))
+        .disabled(viewModel.isUpdating)
         .scaleEffect(isHovered ? 1.01 : 1.0)
         .onHover { hovering in
             withAnimation(SymphonyDesignStyle.Motion.stiffSnap) {

@@ -104,6 +104,43 @@ struct SymphonyIssueCatalogPresenterTests {
         #expect(listIdentifiers == ["KAN-301", "KAN-302", "KAN-303"])
     }
 
+    @Test
+    func presentMarksCancelAvailabilityAndUpdatingState() {
+        let presenter = SymphonyIssueCatalogPresenter()
+
+        let viewModel = presenter.present(
+            SymphonyIssueCollectionContract(
+                issues: [
+                    makeIssue(id: "issue-active", identifier: "KAN-401", priority: 1, state: "Doing", stateType: "started", createdAt: date(day: 1)),
+                    makeIssue(id: "issue-terminal", identifier: "KAN-402", priority: 2, state: "Canceled", stateType: "canceled", createdAt: date(day: 2))
+                ]
+            ),
+            displayMode: .mergedWithBadges,
+            selectedIssueIdentifier: nil,
+            mutationErrorMessage: "Mutation failed.",
+            updatingIssueIdentifier: "KAN-401"
+        )
+
+        let boardCards = Dictionary(
+            uniqueKeysWithValues: viewModel.boardViewModel.columns
+                .flatMap(\.cards)
+                .map { ($0.identifier, $0) }
+        )
+        let listRows = Dictionary(
+            uniqueKeysWithValues: viewModel.listViewModel.rows
+                .map { ($0.identifier, $0) }
+        )
+
+        #expect(viewModel.mutationErrorMessage == "Mutation failed.")
+        #expect(viewModel.updatingIssueIdentifier == "KAN-401")
+        #expect(boardCards["KAN-401"]?.canCancel == true)
+        #expect(boardCards["KAN-401"]?.isUpdating == true)
+        #expect(boardCards["KAN-402"]?.canCancel == false)
+        #expect(listRows["KAN-401"]?.canCancel == true)
+        #expect(listRows["KAN-401"]?.isUpdating == true)
+        #expect(listRows["KAN-402"]?.canCancel == false)
+    }
+
     private func makeIssue(
         id: String,
         identifier: String,

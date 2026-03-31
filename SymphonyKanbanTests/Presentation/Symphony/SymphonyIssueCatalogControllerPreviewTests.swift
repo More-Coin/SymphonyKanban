@@ -17,9 +17,12 @@ struct SymphonyIssueCatalogControllerPreviewTests {
         )
         let controller = SymphonyIssueCatalogController(
             startupService: SymphonyStartupFlowTestSupport.makeStartupService(),
-            issueCatalogService: SymphonyIssueCatalogService(
+            issueCatalogWorkflowService: SymphonyIssueCatalogWorkflowService(
                 fetchIssuesUseCase: FetchSymphonyIssuesUseCase(
                     issueTrackerReadPort: SymphonyMockIssueTrackerPortAdapter()
+                ),
+                updateIssueUseCase: UpdateSymphonyIssueUseCase(
+                    issueTrackerPort: SymphonyMockIssueTrackerPortAdapter()
                 )
             ),
             displayPreferenceService: SymphonyIssueCatalogDisplayPreferenceService(

@@ -9,6 +9,7 @@ import SwiftUI
 public struct SymphonyKanbanBoardView: View {
     private let viewModel: SymphonyKanbanBoardViewModel
     private let onCardSelected: (String) -> Void
+    private let onCancelIssue: (String) -> Void
     private let onBackgroundTapped: () -> Void
 
     @State private var dropTargetColumnID: String?
@@ -17,10 +18,12 @@ public struct SymphonyKanbanBoardView: View {
     public init(
         viewModel: SymphonyKanbanBoardViewModel,
         onCardSelected: @escaping (String) -> Void = { _ in },
+        onCancelIssue: @escaping (String) -> Void = { _ in },
         onBackgroundTapped: @escaping () -> Void = {}
     ) {
         self.viewModel = viewModel
         self.onCardSelected = onCardSelected
+        self.onCancelIssue = onCancelIssue
         self.onBackgroundTapped = onBackgroundTapped
     }
 
@@ -36,6 +39,7 @@ public struct SymphonyKanbanBoardView: View {
                                 dropTargetColumnID: dropTargetColumnID,
                                 appeared: appeared,
                                 onCardSelected: onCardSelected,
+                                onCancelIssue: onCancelIssue,
                                 onDropTargetChanged: { dropTargetColumnID = $0 }
                             )
                         }
@@ -50,6 +54,7 @@ public struct SymphonyKanbanBoardView: View {
                     dropTargetColumnID: dropTargetColumnID,
                     appeared: appeared,
                     onCardSelected: onCardSelected,
+                    onCancelIssue: onCancelIssue,
                     onDropTargetChanged: { dropTargetColumnID = $0 }
                 )
             }

@@ -1,12 +1,15 @@
 import Foundation
 
-public struct SymphonyIssueCatalogService {
+public struct SymphonyIssueCatalogWorkflowService {
     private let fetchIssuesUseCase: FetchSymphonyIssuesUseCase
+    private let updateIssueUseCase: UpdateSymphonyIssueUseCase
 
     public init(
-        fetchIssuesUseCase: FetchSymphonyIssuesUseCase
+        fetchIssuesUseCase: FetchSymphonyIssuesUseCase,
+        updateIssueUseCase: UpdateSymphonyIssueUseCase
     ) {
         self.fetchIssuesUseCase = fetchIssuesUseCase
+        self.updateIssueUseCase = updateIssueUseCase
     }
 
     @MainActor
@@ -67,6 +70,60 @@ public struct SymphonyIssueCatalogService {
         return SymphonyIssueCollectionContract(bindingResults: bindingResults)
     }
 
+    @MainActor
+    public func updateIssue(
+        _ request: SymphonyIssueUpdateRequestContract,
+        activeBindings: [SymphonyActiveWorkspaceBindingContextContract]
+    ) async throws -> SymphonyIssueCollectionContract {
+        guard request.stateChange != nil else {
+            throw SymphonyIssueUpdateApplicationError.missingStateChange(
+                issueIdentifier: request.issueIdentifier
+            )
+        }
+
+        let updateContext = try await resolveUpdateContext(
+            issueIdentifier: request.issueIdentifier,
+            activeBindings: activeBindings
+        )
+
+        _ = try await updateIssueUseCase.updateIssue(
+            request,
+            currentIssue: updateContext.issue,
+            using: updateContext.trackerConfiguration
+        )
+
+        return try await queryIssues(activeBindings: activeBindings)
+    }
+
+    @MainActor
+    public func cancelIssue(
+        issueIdentifier: String,
+        activeBindings: [SymphonyActiveWorkspaceBindingContextContract]
+    ) async throws -> SymphonyIssueCollectionContract {
+        let updateContext = try await resolveUpdateContext(
+            issueIdentifier: issueIdentifier,
+            activeBindings: activeBindings
+        )
+
+        guard isTerminal(issue: updateContext.issue) == false else {
+            throw SymphonyIssueUpdateApplicationError.issueAlreadyTerminal(
+                issueIdentifier: issueIdentifier,
+                stateType: updateContext.issue.stateType
+            )
+        }
+
+        _ = try await updateIssueUseCase.updateIssue(
+            SymphonyIssueUpdateRequestContract(
+                issueIdentifier: issueIdentifier,
+                stateChange: SymphonyIssueStateChangeContract(targetStateType: "canceled")
+            ),
+            currentIssue: updateContext.issue,
+            using: updateContext.trackerConfiguration
+        )
+
+        return try await queryIssues(activeBindings: activeBindings)
+    }
+
     private func failureSummary(
         from error: any Error
     ) -> SymphonyFailureSummaryContract {
@@ -98,4 +155,49 @@ public struct SymphonyIssueCatalogService {
 
         return ordered
     }
+
+    private func isTerminal(issue: SymphonyIssue) -> Bool {
+        let normalizedState = normalize(issue.state)
+        let normalizedStateType = normalize(issue.stateType)
+
+        return normalizedState.contains("done")
+            || normalizedState.contains("complete")
+            || normalizedState.contains("cancel")
+            || normalizedStateType.contains("complete")
+            || normalizedStateType.contains("cancel")
+    }
+
+    private func normalize(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "-", with: "_")
+            .replacingOccurrences(of: " ", with: "_")
+    }
+
+    @MainActor
+    private func resolveUpdateContext(
+        issueIdentifier: String,
+        activeBindings: [SymphonyActiveWorkspaceBindingContextContract]
+    ) async throws -> (
+        issue: SymphonyIssue,
+        trackerConfiguration: SymphonyServiceConfigContract.Tracker
+    ) {
+        let currentCollection = try await queryIssues(activeBindings: activeBindings)
+        let targetBindingResult = currentCollection.bindingResults.first { bindingResult in
+            bindingResult.issues.contains { $0.identifier == issueIdentifier }
+        }
+
+        guard let targetBindingResult,
+              let currentIssue = targetBindingResult.issues.first(where: { $0.identifier == issueIdentifier }),
+              let trackerConfiguration = targetBindingResult.bindingContext.workflowConfiguration?.serviceConfig.tracker else {
+            throw SymphonyIssueUpdateApplicationError.issueNotFound(
+                issueIdentifier: issueIdentifier
+            )
+        }
+
+        return (currentIssue, trackerConfiguration)
+    }
 }
+
+public typealias SymphonyIssueCatalogService = SymphonyIssueCatalogWorkflowService

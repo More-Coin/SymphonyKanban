@@ -329,6 +329,19 @@ final class RuntimeIssueTrackerReadSpy: @unchecked Sendable, SymphonyIssueTracke
         return try next(from: &issueStateResponses)
     }
 
+    func updateIssue(
+        _: SymphonyIssueUpdateRequestContract,
+        currentIssue: SymphonyIssue,
+        using _: SymphonyServiceConfigContract.Tracker
+    ) async throws -> SymphonyIssueUpdateResultContract {
+        recorder?.append("tracker.updateIssue")
+        return SymphonyIssueUpdateResultContract(
+            issueID: currentIssue.id,
+            issueIdentifier: currentIssue.identifier,
+            appliedStateID: "runtime-state"
+        )
+    }
+
     private func next(from responses: inout [RuntimeTrackerResponse]) throws -> [SymphonyIssue] {
         try lock.withLock {
             guard !responses.isEmpty else {
