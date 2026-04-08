@@ -167,4 +167,4 @@ preflight_orphan_check
 
 swiftpm_args=(--package-path "$repo_root")
 run_swiftpm swift test "${swiftpm_args[@]}"
-run_swiftpm swift run "${swiftpm_args[@]}" kanban-architecture-linter "$repo_root"
+run_swiftpm swift run "${swiftpm_args[@]}" architecture-linter "$repo_root"

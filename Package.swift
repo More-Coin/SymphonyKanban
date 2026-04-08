@@ -18,8 +18,8 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "ssh://git@github.com/More-Coin/KanbanArchitectureLinter.git",
-            from: "0.1.0"
+            url: "ssh://git@github.com/More-Coin/ArchitectureLinter.git",
+            from: "0.2.0"
         )
     ],
     targets: [

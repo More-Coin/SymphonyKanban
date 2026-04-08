@@ -45,7 +45,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
 **Implementation checklist**
 
 - [x] `1.1` Decide and implement Symphony package topology.
-  - [x] Preserve `kanban-architecture-linter`.
+  - [x] Preserve `architecture-linter`.
   - [x] Add a Symphony executable path.
   - [x] Add a reusable Symphony target/test topology that avoids file-by-file `Package.swift` churn.
 - [x] `1.2` Implement `WORKFLOW.md` loader and typed config layer.
@@ -111,7 +111,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - [x] Keep `codex.approval_policy`, `codex.thread_sandbox`, and `codex.turn_sandbox_policy` as pass-through Codex-owned config values unless the repo explicitly chooses stricter local validation.
   - Accepted `2026-03-21`.
   - Verification:
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
     - `swift test --package-path .`
@@ -135,7 +135,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - [x] Treat workflow/config read and YAML failures as new-dispatch blockers until fixed; do not treat prompt-template failures the same way.
   - Accepted `2026-03-21`.
   - Verification:
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
     - `swift build --package-path . --product symphony`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
     - `swift test --package-path .`
@@ -154,7 +154,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
     - nonzero when startup fails or the host process exits abnormally
   - Accepted `2026-03-21`.
   - Verification:
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift build --package-path . --product symphony`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
@@ -198,14 +198,14 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - [x] lowercase normalization and invalid-entry ignoring for `agent.max_concurrent_agents_by_state`
   - [x] CLI explicit path vs default `./WORKFLOW.md` behavior
 - [x] Run `swift test --package-path .`
-- [x] Run `swift run --package-path . kanban-architecture-linter .`
+- [x] Run `swift run --package-path . architecture-linter .`
 - [x] Add a Symphony-specific startup smoke check after the executable exists.
 
 **Phase checkpoint**
 
 - Phase 1 accepted `2026-03-21`.
 - Final verification:
-  - `swift run --package-path . kanban-architecture-linter .`
+  - `swift run --package-path . architecture-linter .`
   - `swift build --package-path . --target SymphonyRuntime`
   - `swift build --package-path . --product symphony`
   - `swift test --package-path . --filter SymphonyRuntimeTests`
@@ -268,14 +268,14 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - [x] Add pure backoff helpers only where they remain runtime-independent.
   - Accepted `2026-03-21`.
   - Verification:
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
     - `swift test --package-path .`
   - Follow-up accepted `2026-03-21`: reorganized `Domain/Policies` into `Linter` and `Symphony` subdirectories to separate architecture policies from Symphony domain policies without changing policy behavior.
   - Follow-up verification:
     - `swift test --package-path .`
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - `state type` blocker eligibility currently treats missing blocker state as non-terminal.
     - Dispatch ordering currently sorts `created_at == nil` after known dates.
@@ -284,19 +284,19 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
 - [x] `2.2` Implement Linear read adapter operations, GraphQL normalization, pagination, and error mapping.
   - Accepted `2026-03-21`.
   - Verification:
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
     - `swift test --package-path .`
   - Follow-up accepted `2026-03-21`: consolidated the three tracker-read use cases into grouped `FetchSymphonyIssuesUseCase` overloads without changing the port or gateway seams.
   - Follow-up verification:
     - `swift test --package-path . --filter SymphonyRuntimeTests`
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
   - Follow-up accepted `2026-03-21`: tightened the Application use-case naming policy so multi-method use cases must use distinct semantic method names, and renamed the grouped Symphony tracker-read methods to comply.
   - Follow-up verification:
     - `swift test --package-path . --filter ArchitectureLinterTests`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
   - [x] Make the three required tracker read operations explicit and acceptance-tested:
     - `fetch_candidate_issues()`
     - `fetch_issues_by_states(state_names)`
@@ -336,13 +336,13 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - Verification:
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
   - Follow-up accepted `2026-03-22`: limited the default hook runner to macOS process execution so the workspace lifecycle gateway compiles cleanly in the Xcode workspace while non-macOS targets now fail configured hooks explicitly instead of breaking the build.
   - Follow-up verification:
     - Xcode workspace build (active workspace)
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - Existing non-directory paths at the computed workspace location now fail fast with a typed workspace error instead of being replaced.
     - Relative `workspace.root` values are normalized against the current process working directory before containment validation.
@@ -366,7 +366,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - Verification:
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - First-run prompt rendering now exposes `attempt` as `null` rather than omitting it so templates may reference the variable safely on first dispatch.
     - The strict repo-owned renderer intentionally supports only interpolation plus `{% for %}` loops for now; any filter usage is treated as an unknown-filter render error.
@@ -384,7 +384,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - Verification:
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - Runtime/session carriers remain in `Application/Contracts/Ports/Symphony` because they describe runtime boundary state for scheduling and observability rather than stable Domain meaning.
     - Timer, worker, and monitor handles stay generic `Equatable & Sendable` placeholders so runtime-only process/timer ownership remains outside Domain while still allowing contract-level acceptance tests.
@@ -431,7 +431,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - [x] `attempt` null vs integer semantics
 - [x] Prefer fakes for tracker transport and process/filesystem seams where practical.
 - [x] Run `swift test --package-path .`
-- [x] Run `swift run --package-path . kanban-architecture-linter .`
+- [x] Run `swift run --package-path . architecture-linter .`
 
 **Phase checkpoint**
 
@@ -441,13 +441,13 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - `swift build --package-path . --target SymphonyRuntime`
   - `swift test --package-path . --filter SymphonyRuntimeTests`
   - `swift test --package-path .`
-  - `swift run --package-path . kanban-architecture-linter .`
+  - `swift run --package-path . architecture-linter .`
 - Reopened acceptance verification `2026-03-22`:
   - Xcode workspace build (active workspace)
   - `swift build --package-path . --target SymphonyRuntime`
   - `swift test --package-path . --filter SymphonyRuntimeTests`
   - `swift test --package-path .`
-  - `swift run --package-path . kanban-architecture-linter .`
+  - `swift run --package-path . architecture-linter .`
 - Reopened acceptance note `2026-03-22`: Xcode diagnostics for `SymphonyWorkspaceLifecycleGateway` were cleared after limiting the default hook runner to macOS process execution and rerunning the active workspace build; no remaining Xcode navigator errors were present after refresh.
 - Deferred low-severity follow-ups:
   - Sanitized workspace-key collisions still resolve to the same deterministic workspace path until a later phase defines a disambiguation contract.
@@ -509,7 +509,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - Documentation:
     - `Codex Symphony Kanban/Documentation/SYMPHONY_RUNNER_TRUST_POSTURE.md`
   - Verification:
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - The repository posture is now fixed to a trusted single-tenant operator environment with untrusted tracker, repository, and workflow content.
     - Thread defaults are documented as `approvalPolicy = never` and `sandbox = workspaceWrite`, while turn defaults are documented as `approvalPolicy = unlessTrusted` and `sandboxPolicy = { type = workspaceWrite, writableRoots = [workspace_path], networkAccess = false }` unless a later workflow-backed override is explicitly implemented.
@@ -529,7 +529,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - Verification:
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - The new Application contract layer now owns the typed Codex runner posture, handshake payloads, runtime event metadata, and normalized failure categories, while JSON-RPC wire-shape parsing remains deferred to the Infrastructure gateway in Phase `3.3`.
     - The new `SymphonyCodexRunnerPortProtocol` is intentionally thin and stateful enough for a live gateway implementation, but it still omits explicit cancellation or shutdown calls until the worker lifecycle and reconciliation flows are wired in later subphases.
@@ -574,7 +574,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
     - `turn_input_required`
   - Accepted `2026-03-22`.
   - Verification:
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift test --package-path . --filter SymphonyCodexRunnerGatewayTests`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
@@ -604,7 +604,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - [x] emit structured operator-visible logs for startup failure, timeout, cancellation, abnormal exit, policy-driven failure, unsupported tool events, and user-input-required events
   - Accepted `2026-03-22`.
   - Verification:
-    - `swift run --package-path . kanban-architecture-linter .`
+    - `swift run --package-path . architecture-linter .`
     - `swift build --package-path . --target SymphonyRuntime`
     - `swift test --package-path . --filter SymphonyWorkerAttemptServiceTests`
     - `swift test --package-path . --filter SymphonyRuntimeTests`
@@ -643,7 +643,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
 - [x] Keep tests mostly unit or narrow integration local.
 - [x] Avoid broad end-to-end orchestration runs at this phase.
 - [x] Run `swift test --package-path .`
-- [x] Run `swift run --package-path . kanban-architecture-linter .`
+- [x] Run `swift run --package-path . architecture-linter .`
 
 **Risks / notes**
 
@@ -665,7 +665,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - `3.3` concrete app-server gateway
   - `3.4` worker attempt orchestration service
 - Phase-level verification:
-  - `swift run --package-path . kanban-architecture-linter .`
+  - `swift run --package-path . architecture-linter .`
   - `swift build --package-path . --target SymphonyRuntime`
   - `swift test --package-path . --filter SymphonyWorkerAttemptServiceTests`
   - `swift test --package-path . --filter SymphonyRuntimeTests`
@@ -755,7 +755,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
       - `swift test --package-path . --filter SymphonyDomainPolicyTests`
       - `swift test --package-path . --filter SymphonyRuntimeTests`
       - `swift test --package-path .`
-      - `swift run --package-path . kanban-architecture-linter .`
+      - `swift run --package-path . architecture-linter .`
     - Orchestrator rerun:
       - `swift build --package-path . --target SymphonyRuntime`
       - `swift test --package-path . --filter SymphonyOrchestratorStateServiceTests`
@@ -763,7 +763,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
       - `swift test --package-path . --filter SymphonyDomainPolicyTests`
       - `swift test --package-path . --filter SymphonyRuntimeTests`
       - `swift test --package-path .`
-      - `swift run --package-path . kanban-architecture-linter .`
+      - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - `SymphonyOrchestratorStateService` is the single public `4.1` scheduling surface, while focused use cases and narrow Domain policy protocols sit underneath it to satisfy the repo's Application use-case and abstraction rules without moving mutable state ownership out of Application.
     - `eligibleIssuesForDispatch` currently returns the ordered eligible candidate list without decrementing per-state slots across that returned list; Phase `4.2` remains responsible for consuming slots as it claims and dispatches issues.
@@ -808,7 +808,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
       - `swift test --package-path . --filter SymphonyWorkerAttemptServiceTests`
       - `swift test --package-path . --filter SymphonyOrchestratorRuntimeServiceTests`
       - `swift test --package-path .`
-      - `swift run --package-path . kanban-architecture-linter .`
+      - `swift run --package-path . architecture-linter .`
     - Orchestrator rerun:
       - `swift build --package-path . --target SymphonyRuntime`
       - `swift build --package-path . --product symphony`
@@ -818,7 +818,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
       - `swift test --package-path . --filter SymphonyOrchestratorStateServiceTests`
       - `swift test --package-path . --filter SymphonyWorkspaceLifecycleGatewayTests`
       - `swift test --package-path .`
-      - `swift run --package-path . kanban-architecture-linter .`
+      - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - `SymphonyServiceHostRuntime` and the new runtime scheduler, clock, worker-execution, and log-sink seams keep timers, subprocess management, and host lifetime out of `Application/Services`, matching the repo's layering rules for orchestrators.
     - Stall detection now reads neutral application-facing accessors (`workerStallTimeoutMs`, `lastActivityTimestamp`) even though the underlying workflow and live-session contracts still retain Codex-specific storage names needed elsewhere in the runtime stack.
@@ -854,12 +854,12 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
       - `swift test --package-path . --filter SymphonyWorkflowConfigurationTests`
       - `swift test --package-path . --filter SymphonyWorkflowReloadMonitorGatewayTests`
       - `swift test --package-path .`
-      - `swift run --package-path . kanban-architecture-linter .`
+      - `swift run --package-path . architecture-linter .`
     - Orchestrator rerun:
       - `swift test --package-path . --filter SymphonyWorkflowReloadMonitorGatewayTests`
       - `swift test --package-path . --filter SymphonyOrchestratorRuntimeServiceTests`
       - `swift test --package-path .`
-      - `swift run --package-path . kanban-architecture-linter .`
+      - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - The workflow reload monitor now watches the containing directory and filters by target-file snapshots so atomic save/replace flows keep triggering reloads without moving file-watch mechanics into `Application/Services`.
     - Reload reuses `SymphonyDispatchPreflightValidationService` and the existing workflow/config resolution path for both watch-triggered reload and missed-watch defensive revalidation, keeping one validated source of truth for runtime config.
@@ -898,7 +898,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - [x] watch-triggered reload and missed-watch defensive revalidation
   - [x] invalid reload keeps last known good config and surfaces an error
 - [x] Run `swift test --package-path .`
-- [x] Run `swift run --package-path . kanban-architecture-linter .`
+- [x] Run `swift run --package-path . architecture-linter .`
 
 **Risks / notes**
 
@@ -974,7 +974,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
       - `swift test --package-path . --filter SymphonyCLIRuntimeTests`
       - `swift test --package-path . --filter SymphonyRuntimeTests`
       - `swift test --package-path .`
-      - `swift run --package-path . kanban-architecture-linter .`
+      - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - `5.1` is satisfied by a console-only runtime status surface that emits once after startup cleanup and once after each completed orchestrator tick; no HTTP or dashboard transport was added.
     - The worker verification pass was interrupted by two stale `swift-test` processes that held the shared `.build` directory; the orchestrator cleared those processes and completed the required reruns.
@@ -1008,7 +1008,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
       - `swift test --package-path . --filter SymphonyStartupRendererTests`
       - `swift test --package-path . --filter SymphonyRuntimeTests`
       - `swift test --package-path .`
-      - `swift run --package-path . kanban-architecture-linter .`
+      - `swift run --package-path . architecture-linter .`
     - Orchestrator rerun:
       - `swift build --package-path . --target SymphonyRuntime`
       - `swift build --package-path . --product symphony`
@@ -1018,7 +1018,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
       - `swift test --package-path . --filter SymphonyStartupRendererTests`
       - `swift test --package-path . --filter SymphonyRuntimeTests`
       - `swift test --package-path .`
-      - `swift run --package-path . kanban-architecture-linter .`
+      - `swift run --package-path . architecture-linter .`
   - Assumptions and remaining low-severity follow-ups:
     - `SYMPHONY_RUNNER_TRUST_POSTURE.md` is restored as the canonical filename because that is the artifact already referenced by the plan ledger.
     - `scripts/run_architecture_linter.sh` remains unchanged in this phase; Symphony verification is documented as a separate required validation path until the repo explicitly promotes it into shared CI or script entrypoints.
@@ -1070,7 +1070,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
   - `swift test --package-path . --filter SymphonyStartupRendererTests`
   - `swift test --package-path . --filter SymphonyRuntimeTests`
   - `swift test --package-path .`
-  - `swift run --package-path . kanban-architecture-linter .`
+  - `swift run --package-path . architecture-linter .`
 - Phase decisions carried forward:
   - Optional HTTP support remains deferred.
   - Repo-standard linter scripting remains unchanged; Symphony verification is still documented as a separate required validation path.
@@ -1096,7 +1096,7 @@ Use this document as the execution checklist for Symphony delivery. Each phase k
 - [ ] Treat baseline operator-visible failures as core conformance work in Phases 1, 3, 4, and 5 rather than deferring them to dashboards or HTTP surfaces.
 - [ ] Treat dynamic reload, dispatch preflight validation, hook failure semantics, tracker query semantics, and runner error mapping as required work, not deferred low-severity follow-ups.
 - [ ] Decide whether Symphony verification stays separate or becomes part of the repo-standard verification script. The current repo-standard path proves the linter, not Symphony.
-- [ ] Decide in Phase `1.1` whether a dedicated Symphony test target should be added instead of overloading `Tests/KanbanArchitectureLinterTests`.
+- [ ] Decide in Phase `1.1` whether a dedicated Symphony test target should be added instead of overloading `Tests/ArchitectureLinterTests`.
 - [ ] Make an explicit repo decision for a repository-owned `WORKFLOW.md`. The specification expects one, but the repo currently has none.
 - [ ] Keep tracker writes and the optional `linear_graphql` tool out of orchestrator core.
 - [ ] Keep optional specification sections optional. The HTTP server, `linear_graphql` tool extension, and SSH worker extension should not be pulled into core phases unless explicitly prioritized.
